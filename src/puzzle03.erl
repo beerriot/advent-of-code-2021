@@ -7,7 +7,9 @@
 
 -export([
          solveA/0,
-         solveA/1
+         solveA/1,
+         solveB/0,
+         solveB/1
         ]).
 
 solveA() ->
@@ -50,3 +52,46 @@ make_gamma(Total, Counts) ->
                                            false -> 0
                                        end)
                 end, 0, Counts).
+
+solveB() ->
+    {ok, Data} = file:read_file("puzzles/puzzle03-input.txt"),
+    Numbers = string:split(Data, <<"\n">>, all),
+    solveB([ N || N <- Numbers, N =/= <<>>]).
+
+solveB(Numbers) ->
+    {Zeros, Ones} = lists:partition(fun(<<Bit, _/binary>>) ->
+                                            Bit == $0
+                                    end,
+                                    Numbers),
+    case length(Zeros) > length(Ones) of
+        true ->
+            Oxygen = Zeros,
+            CO2 = Ones;
+        false ->
+            Oxygen = Ones,
+            CO2 = Zeros
+    end,
+    {binary_to_integer(solveB(Oxygen, {most, 1}, 1), 2),
+     binary_to_integer(solveB(CO2, {least, 0}, 1), 2)}.
+
+solveB([], _, _) ->
+    [];
+solveB([Answer], _, _) ->
+    Answer;
+solveB(Numbers, Preference, Offset) ->
+    {Zeros, Ones} = lists:partition(
+                      fun(<<_:Offset/binary, Bit, _/binary>>) ->
+                              Bit == $0
+                      end,
+                      Numbers),
+    Selection = case {length(Zeros) > length(Ones), Preference} of
+                    {true, {most, _}} ->
+                        Zeros;
+                    {true, {least, _}} ->
+                        Ones;
+                    {false, {_, 1}} ->
+                        Ones;
+                    {false, {_, 0}} ->
+                        Zeros
+                end,
+    solveB(Selection, Preference, Offset+1).
