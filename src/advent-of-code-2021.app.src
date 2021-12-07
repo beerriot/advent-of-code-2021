@@ -1,0 +1,14 @@
+{application, 'advent-of-code-2021',
+ [{description, "Solutions to Advent of Code 2021"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["MIT"]},
+  {links, []}
+ ]}.
