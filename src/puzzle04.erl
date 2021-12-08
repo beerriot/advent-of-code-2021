@@ -7,17 +7,25 @@
 -export([
          solveA/0,
          solveA/2,
+         solveB/0,
+         solveB/2,
          score_win/2
         ]).
 
--compile([export_all]).
-
 solveA() ->
-    {ok, Data} = file:read_file("puzzles/puzzle04-input.txt"),
+    {Call, Boards} = parse_file("puzzles/puzzle04-input.txt"),
+    solveA(Call, Boards).
+
+solveB() ->
+    {Call, Boards} = parse_file("puzzles/puzzle04-input.txt"),
+    solveB(Call, Boards).
+
+parse_file(Filename) ->
+    {ok, Data} = file:read_file(Filename),
     [CallString | BoardStrings] = string:split(Data, <<"\n">>, all),
     Call = parse_call(CallString),
     Boards = parse_boards(BoardStrings),
-    solveA(Call, Boards).
+    {Call, Boards}.
 
 parse_call(CallString) ->
     [ binary_to_integer(N) ||
@@ -45,6 +53,15 @@ solveA([Next|Rest], Boards) ->
             {Next, B};
         [] ->
             solveA(Rest, NewBoards)
+    end.
+
+solveB([Next|Rest], Boards) ->
+    NewBoards = call_number(Next, Boards),
+    case lists:filter(fun winning_board/1, NewBoards) of
+        [W] when length(Boards) == 1 ->
+            {Next, W};
+        Winners ->
+            solveB(Rest, NewBoards -- Winners)
     end.
 
 call_number(N, Boards) ->
