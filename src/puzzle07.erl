@@ -6,13 +6,20 @@
 
 -export([
          solveA/0,
-         find_best_position/1,
+         solveB/0,
+         find_best_positionA/1,
+         find_best_positionB/1,
          median/1,
-         cost_to_move/2
+         mean/1,
+         cost_to_moveA/2,
+         cost_to_moveB/2
         ]).
 
 solveA() ->
-    find_best_position(load_crabs()).
+    find_best_positionA(load_crabs()).
+
+solveB() ->
+    find_best_positionB(load_crabs()).
 
 load_crabs() ->
     {ok, Data} = file:read_file("puzzles/puzzle07-input.txt"),
@@ -20,14 +27,14 @@ load_crabs() ->
     [ binary_to_integer(F) ||
         F <- string:split(OneLine, <<",">>, all) ].
 
-find_best_position(Crabs) ->
+find_best_positionA(Crabs) ->
     case median(Crabs) of
         [Median] ->
-            {Median, cost_to_move(Median, Crabs)};
+            {Median, cost_to_moveA(Median, Crabs)};
         [Median, Median] ->
-            {Median, cost_to_move(Median, Crabs)};
+            {Median, cost_to_moveA(Median, Crabs)};
         [A, B] ->
-            case {cost_to_move(A, Crabs), cost_to_move(B, Crabs)} of
+            case {cost_to_moveA(A, Crabs), cost_to_moveA(B, Crabs)} of
                 {CostA, CostB} when CostA < CostB ->
                     {A, CostA};
                 {_, CostB} ->
@@ -45,5 +52,25 @@ median(Crabs) ->
             [A,B]
     end.
 
-cost_to_move(Position, Crabs) ->
+cost_to_moveA(Position, Crabs) ->
     lists:sum([abs(Position-C) || C <- Crabs]).
+
+find_best_positionB(Crabs) ->
+    case mean(Crabs) of
+        Mean when trunc(Mean) == Mean ->
+            {trunc(Mean), cost_to_moveB(trunc(Mean), Crabs)};
+        Mean ->
+            case {cost_to_moveB(trunc(Mean), Crabs),
+                  cost_to_moveB(trunc(Mean)+1, Crabs)} of
+                {CostA, CostB} when CostA < CostB ->
+                    {trunc(Mean), CostA};
+                {_, CostB} ->
+                    {trunc(Mean)+1, CostB}
+            end
+    end.
+
+mean(Crabs) ->
+    lists:sum(Crabs) / length(Crabs).
+
+cost_to_moveB(Position, Crabs) ->
+    lists:sum([lists:sum(lists:seq(1, abs(Position-C))) || C <- Crabs]).
