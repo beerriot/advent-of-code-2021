@@ -6,6 +6,7 @@
 
 -export([
          solveA/0,
+         solveB/0,
          map_lines/1,
          count_overlaps/1
         ]).
@@ -17,6 +18,13 @@ solveA() ->
     HVLines = [ L || L={{X1,Y1},{X2,Y2}} <- Lines,
                      (X1 == X2) orelse (Y1 == Y2) ],
     Map = map_lines(HVLines),
+    count_overlaps(Map).
+
+solveB() ->
+    {ok, Data} = file:read_file("puzzles/puzzle05-input.txt"),
+    Lines = [ parse_line(S) || S <- string:split(Data, <<"\n">>, all),
+                               S =/= <<>> ],
+    Map = map_lines(Lines),
     count_overlaps(Map).
 
 parse_line(String) ->
@@ -66,7 +74,30 @@ map_line({{X, Y1}, {X, Y2}}, Map) ->
                       {NewRow, Y+1}
               end,
               0,
+              Map));
+map_line({{X1, Y1}, {X2, Y2}}, Map) ->
+    %% diagonal
+    [{StartX, StartY}, {EndX, EndY}] = lists:keysort(2, [{X1, Y1}, {X2, Y2}]),
+    XDir = case EndX > StartX of
+               true -> 1;
+               false -> -1
+           end,
+    element(1,
+            lists:mapfoldl(
+              fun(Row, Y) ->
+                      case (Y >= StartY andalso Y =< EndY) of
+                          true ->
+                              X = StartX + XDir * (Y - StartY),
+                              {Left, [V|Right]} = lists:split(X, Row),
+                              NewRow = Left ++ [V+1|Right];
+                          false ->
+                              NewRow = Row
+                      end,
+                      {NewRow, Y+1}
+              end,
+              0,
               Map)).
+
 
 count_overlaps(Map) ->
     lists:sum([ length([ N || N <- Row, N > 1 ]) || Row <- Map ]).
