@@ -44,3 +44,73 @@ score_row([_|Rest]) ->
     score_row(Rest);
 score_row([]) ->
     0.
+
+solveB() ->
+    Map = load_map(),
+    Basins = find_basins(Map),
+    [{_, _, A},{_, _, B},{_, _, C}|_] =
+        lists:reverse(lists:keysort(3, Basins)),
+    A * B * C.
+
+find_basins(Map) ->
+    RowBasins = find_row_basins(Map, []),
+    group_row_basins(RowBasins, []).
+
+
+find_row_basins([Row|Rest], Acc) ->
+    case lists:foldl(fun(9, {undef, L, Basins}) ->
+                             {undef, L+1, Basins};
+                        (9, {Start, L, Basins}) ->
+                             {undef, L+1, [{Start, L-1}|Basins]};
+                        (_, {undef, L, Basins}) ->
+                             {L, L+1, Basins};
+                        (_, {Start, L, Basins}) ->
+                             {Start, L+1, Basins}
+                     end,
+                     {undef, 0, []},
+                     Row) of
+        {undef, _, Basins} ->
+            find_row_basins(Rest, [Basins | Acc]);
+        {Start, L, Basins} ->
+            find_row_basins(Rest, [ [{Start, L-1}|Basins] | Acc])
+    end;
+find_row_basins([], Acc) ->
+    Acc.
+
+group_row_basins([Row|Rest], Acc) ->
+    group_row_basins(Rest, group_row(Row, Acc));
+group_row_basins([], Acc) ->
+    Acc.
+
+group_row([{Start,End}|Rest], Acc) ->
+    {Overlapping, NotOverlapping} =
+        lists:partition(
+          fun({Spans, _, _}) ->
+                  lists:any(
+                    fun({SpanStart, SpanEnd}) ->
+                            ((SpanStart =< Start) and (Start =< SpanEnd)) or
+                                ((SpanStart =< End) and (End =< SpanEnd)) or
+                                ((Start =< SpanStart) and (SpanStart =< End)) or
+                                ((Start =< SpanEnd) and (SpanEnd =< End))
+                    end,
+                    Spans)
+          end,
+          Acc),
+    case Overlapping of
+        [] ->
+            NewOverlapping = {[], [{Start, End}], End-Start+1};
+        _ ->
+            NewOverlapping =
+                lists:foldl(
+                  fun({Spans, NextSpans, Count},
+                      {AccSpans, AccNextSpans, AccCount}) ->
+                          {Spans ++ AccSpans,
+                           NextSpans ++ AccNextSpans,
+                           Count+AccCount}
+                  end,
+                  {[], [], 0},
+                  [{[],[{Start,End}], End-Start+1}|Overlapping])
+    end,
+    group_row(Rest, [NewOverlapping|NotOverlapping]);
+group_row([], Acc) ->
+    [{NextSpans, [], Count} || {_, NextSpans, Count} <- Acc].
