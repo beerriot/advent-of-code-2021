@@ -5,7 +5,8 @@
 -module(puzzle11).
 
 -export([
-         solveA/0
+         solveA/0,
+         solveB/0
         ]).
 
 -compile([export_all]).
@@ -13,19 +14,32 @@
 solveA() ->
     count_flashes(100, load_octopi()).
 
+solveB() ->
+    case count_flashes(1000, load_octopi()) of
+        {0, Count} ->
+            {not_yet, Count};
+        {N, _} ->
+            {all_flash, 1000-N}
+    end.
+
 load_octopi() ->
     {ok, Data} = file:read_file("puzzles/puzzle11-input.txt"),
     [ [ C - $0 || C <- binary_to_list(Row) ]
       || Row <- string:split(Data, <<"\n">>, all), Row =/= <<>> ].
 
 count_flashes(Iterations, Octopi) ->
-    count_flashes(Iterations, Octopi, 0).
+    count_flashes(Iterations, Octopi, 0,
+                  lists:sum([ length(Row) || Row <- Octopi ])).
 
-count_flashes(0, _, Count) ->
-    Count;
-count_flashes(Iterations, Octopi, Count) ->
-    {Flashes, NewOctopi} = flash_round(increment_all(Octopi), 0),
-    count_flashes(Iterations-1, NewOctopi, Count+Flashes).
+count_flashes(0, _, Count, _) ->
+    {0, Count};
+count_flashes(Iterations, Octopi, Count, StopCount) ->
+    case flash_round(increment_all(Octopi), 0) of
+        {StopCount, _} ->
+            {Iterations-1, StopCount};
+        {Flashes, NewOctopi} ->
+            count_flashes(Iterations-1, NewOctopi, Count+Flashes, StopCount)
+    end.
 
 increment_all(Octopi) ->
     [ [O+1 || O <- Row] || Row <- Octopi ].
