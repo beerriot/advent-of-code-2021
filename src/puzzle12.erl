@@ -2,6 +2,9 @@
 %%
 %% cave network
 %% https://adventofcode.com/2021/day/12
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/12/advent-of-code-day-12/
 
 -module(puzzle12).
 

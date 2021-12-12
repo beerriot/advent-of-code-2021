@@ -32,5 +32,6 @@ Puzzle inputs are in the `puzzles/` directory. I suppose those files
 are technically copyright Advent of Code owners, but I hope they won't
 mind me reposting them here, to make it easier to run these examples.
 
-Explanations of these solutions are slowly showing up on my blog:
-https://blog.beerriot.com/
+Explanations of these solutions are slowly showing up on [my blog](https://blog.beerriot.com/category/adventofcode/):
+
+ * [Day 12](https://blog.beerriot.com/2021/12/12/advent-of-code-day-12/)
