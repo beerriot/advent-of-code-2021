@@ -1,12 +1,16 @@
 %% Puzzle:
 %%
 %% cave network
+%% https://adventofcode.com/2021/day/12
 
 -module(puzzle12).
 
 -export([
          solveA/0,
-         solveB/0
+         solveB/0,
+         build_network/1,
+         count_paths/2,
+         count_paths/3
         ]).
 
 solveA() ->
@@ -36,30 +40,33 @@ add_link(From, To, Net) ->
             [{From, [To]}|Net]
     end.
 
-count_paths(Start, Network) ->
-    case lists:keytake(Start, 1, Network) of
-        {value, {Start, InitialLinks}, Rest} ->
-            RealRest = case Start of
+count_paths(<<"end">>, _) ->
+  1;
+count_paths(Cave, Network) ->
+    case lists:keytake(Cave, 1, Network) of
+        false ->
+            0;
+        {value, {Cave, Links}, Rest} ->
+            RealRest = case Cave of
                            <<C, _/binary>> when C >= $A, C =< $Z ->
-                               [{Start, InitialLinks}|Rest];
+                               [{Cave, Links}|Rest];
                            _ ->
                                Rest
                        end,
-            lists:sum([ case L of
-                            <<"end">> -> 1;
-                            _ -> count_paths(L, RealRest)
-                        end || L <- InitialLinks ]);
-        false ->
-            0
+            lists:sum([ count_paths(L, RealRest) || L <- Links ])
     end.
 
-count_paths(Start, Network, Visited) ->
-    case lists:keytake(Start, 1, Network) of
-        {value, {Start, InitialLinks}, Rest} ->
+count_paths(<<"end">>, _, _) ->
+  1;
+count_paths(Cave, Network, Visited) ->
+    case lists:keytake(Cave, 1, Network) of
+        false ->
+            0;
+        {value, {Cave, Links}, Rest} ->
             {RealRest, NewVisited} =
-                case Start of
+                case Cave of
                     <<C, _/binary>> when C >= $A, C =< $Z ->
-                        {[{Start, InitialLinks}|Rest], Visited};
+                        {[{Cave, Links}|Rest], Visited};
                     <<"start">> ->
                         {Rest, Visited};
                     _ ->
@@ -67,7 +74,7 @@ count_paths(Start, Network, Visited) ->
                             complete ->
                                 {Rest, complete};
                             _ ->
-                                case lists:member(Start, Visited) of
+                                case lists:member(Cave, Visited) of
                                     true ->
                                         {lists:foldl(
                                            fun(V, Acc) ->
@@ -77,15 +84,11 @@ count_paths(Start, Network, Visited) ->
                                            Visited),
                                          complete};
                                     false ->
-                                        {[{Start, InitialLinks}|Rest],
-                                         [Start|Visited]}
+                                        {[{Cave, Links}|Rest],
+                                         [Cave|Visited]}
                                 end
                         end
                 end,
-            lists:sum([ case L of
-                            <<"end">> -> 1;
-                            _ -> count_paths(L, RealRest, NewVisited)
-                        end || L <- InitialLinks ]);
-        false ->
-            0
+            lists:sum([ count_paths(L, RealRest, NewVisited)
+                        || L <- Links ])
     end.
