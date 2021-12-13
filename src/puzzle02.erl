@@ -3,6 +3,8 @@
 %% First half: Add "forward" directives, and net up-down directives.
 %%
 %% Second half: up/down is aim, not depth, and depth changes as forward*aim
+%%
+%% https://adventofcode.com/2021/day/2
 
 -module(puzzle02).
 
@@ -16,24 +18,24 @@
 -record(stateA, {x, depth}).
 
 solveA() ->
-    solveA("puzzles/puzzle02-input.txt").
+    {ok, Data} = file:read_file("puzzles/puzzle02-input.txt"),
+    solveA(string:split(Data, <<"\n">>, all)).
 
-solveA(Filename) ->
-    {ok, Data} = file:read_file(Filename),
-    Commands = string:split(Data, <<"\n">>, all),
+solveA(Commands) ->
     reportA(Commands, #stateA{x=0, depth=0}).
 
 reportA([<<>>], Position) ->
     %% file ends with a newline
+    Position;
+reportA([], Position) ->
+    %% my copy-paste of the example doe not end with a newline
     Position;
 reportA([<<"forward ", Move/binary>>|Rest], State=#stateA{x=X}) ->
     reportA(Rest, State#stateA{x=X + binary_to_integer(Move)});
 reportA([<<"down ", Move/binary>>|Rest], State=#stateA{depth=Depth}) ->
     reportA(Rest, State#stateA{depth=Depth + binary_to_integer(Move)});
 reportA([<<"up ", Move/binary>>|Rest], State=#stateA{depth=Depth}) ->
-    reportA(Rest, State#stateA{depth=Depth - binary_to_integer(Move)});
-reportA([], Position) ->
-    Position.
+    reportA(Rest, State#stateA{depth=Depth - binary_to_integer(Move)}).
 
 
 -record(stateB, {x, depth, aim}).
@@ -43,18 +45,17 @@ solveB() ->
     solveB(string:split(Data, <<"\n">>, all)).
 
 solveB(Commands) ->
-    reportB(Commands, #stateB{x=0, depth=0, aim=0}).
-
-reportB([<<>>], Position) ->
-    %% file ends with a newline
-    Position;
-reportB([<<"forward ", Move/binary>>|Rest],
-        State=#stateB{x=X, depth=Depth, aim=Aim}) ->
-    M = binary_to_integer(Move),
-    reportB(Rest, State#stateB{x=X + M, depth=Depth + Aim * M});
-reportB([<<"down ", Move/binary>>|Rest], State=#stateB{aim=Aim}) ->
-    reportB(Rest, State#stateB{aim=Aim + binary_to_integer(Move)});
-reportB([<<"up ", Move/binary>>|Rest], State=#stateB{aim=Aim}) ->
-    reportB(Rest, State#stateB{aim=Aim - binary_to_integer(Move)});
-reportB([], Position) ->
-    Position.
+    lists:foldl(fun(<<"forward ", Move/binary>>,
+                    State=#stateB{x=X, depth=Depth, aim=Aim}) ->
+                        M = binary_to_integer(Move),
+                        State#stateB{x=X + M, depth=Depth + Aim * M};
+                   (<<"down ", Move/binary>>, State=#stateB{aim=Aim}) ->
+                        State#stateB{aim=Aim + binary_to_integer(Move)};
+                   (<<"up ", Move/binary>>, State=#stateB{aim=Aim}) ->
+                        State#stateB{aim=Aim - binary_to_integer(Move)};
+                   (<<>>, State) ->
+                        %% file ends with a newline
+                        State
+                end,
+                #stateB{x=0, depth=0, aim=0},
+                Commands).
