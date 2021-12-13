@@ -7,6 +7,9 @@
 %%  -> solution to first half is now using a window size of 1
 %%
 %% https://adventofcode.com/2021/day/1
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/12/advent-of-code-day-1/
 
 -module(puzzle01).
 
