@@ -5,38 +5,35 @@
 %%
 %% Second half: similar, but use a sliding window instead.
 %%  -> solution to first half is now using a window size of 1
+%%
+%% https://adventofcode.com/2021/day/1
 
 -module(puzzle01).
 
 -export([
-         solve/1,
-         solve/2
+         solveA/0,
+         solveB/0,
+         count_increases/2
         ]).
 
-solve(Window) ->
-    solve(Window, "puzzles/puzzle01-input.txt").
+solveA() ->
+    count_increases(1, load_data()).
 
-solve(Window, Filename) ->
-    {ok, Data} = file:read_file(Filename),
-    NumberStrings = string:split(Data, <<"\n">>, all),
-    {StartWindow, Rest} = fill_window(Window, NumberStrings),
-    report(Rest, StartWindow, 0).
+solveB() ->
+    count_increases(3, load_data()).
 
-fill_window(Size, Strings) ->
-    {RevWindow, Rest} = lists:split(Size, Strings),
-    {lists:reverse([ binary_to_integer(N) || N <- RevWindow ]), Rest}.
+load_data() ->
+    {ok, Data} = file:read_file("puzzles/puzzle01-input.txt"),
+    [ binary_to_integer(N) || N <- string:split(Data, <<"\n">>, all),
+                              N =/= <<>> ].
 
-
-report([<<>>], _, Count) ->
-    %% file ends with a newline
-    Count;
-report([NextString|Rest], Window, Count) ->
-    Next = binary_to_integer(NextString),
-    NewWindow = [Next | lists:droplast(Window)],
-    report(Rest, NewWindow,
-           case lists:sum(NewWindow) > lists:sum(Window) of
-               true -> Count + 1;
-               false -> Count
-           end);
-report([], _, Count) ->
-    Count.
+count_increases(WindowLength, Numbers) ->
+    ComparisonStart = lists:nthtail(WindowLength, Numbers),
+    element(2, lists:foldl(
+                 fun(New, {[Old|Rest], Count}) when New > Old ->
+                         {Rest, Count + 1};
+                    (_, {[_|Rest], Count}) ->
+                         {Rest, Count}
+                 end,
+                 {Numbers, 0},
+                 ComparisonStart)).
