@@ -35,4 +35,5 @@ mind me reposting them here, to make it easier to run these examples.
 Explanations of these solutions are slowly showing up on [my blog](https://blog.beerriot.com/category/adventofcode/):
 
  * [Day 1](https://blog.beerriot.com/2021/12/12/advent-of-code-day-1/)
+ * [Day 2](https://blog.beerriot.com/2021/12/13/advent-of-code-day-2/)
  * [Day 12](https://blog.beerriot.com/2021/12/12/advent-of-code-day-12/)

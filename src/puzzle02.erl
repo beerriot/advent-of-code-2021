@@ -5,6 +5,9 @@
 %% Second half: up/down is aim, not depth, and depth changes as forward*aim
 %%
 %% https://adventofcode.com/2021/day/2
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/13/advent-of-code-day-2/
 
 -module(puzzle02).
 
