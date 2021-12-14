@@ -32,14 +32,7 @@ parse_input(Data) ->
         lists:splitwith(fun(L) -> L =/= <<>> end,
                         string:split(Data, <<"\n">>, all)),
     {binary_to_list(Template),
-     lists:foldl(fun(<<PA,PB," -> ",I>>, Rules) ->
-                         Rules#{[PA,PB] => I};
-                    (<<>>, Rules) ->
-                         %% ignore final newline
-                         Rules
-                 end,
-                 #{},
-                 RuleLines)}.
+     maps:from_list([ {[PA,PB],I} || <<PA,PB," -> ",I>> <- RuleLines ])}.
 
 polymerize(0, _, Polymer) ->
     Polymer;
