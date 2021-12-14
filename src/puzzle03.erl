@@ -4,6 +4,9 @@
 %% number composed of most common is "gamma", inverse is "epsilon.
 %%
 %% https://adventofcode.com/2021/day/3
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/14/advent-of-code-day-3/
 
 -module(puzzle03).
 
