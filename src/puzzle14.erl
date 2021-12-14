@@ -21,7 +21,7 @@ solveA() ->
     {Template, Rules} = load_file(),
     Polymer = polymerize(10, Rules, Template),
     Counts = lists:keysort(2, maps:to_list(count_elements(Polymer))),
-    element(2, hd(lists:reverse(Counts))) - element(2, hd(Counts)).
+    element(2, lists:last(Counts)) - element(2, hd(Counts)).
 
 load_file() ->
     {ok, Data} = file:read_file("puzzles/puzzle14-input.txt"),
@@ -55,7 +55,7 @@ solveB() ->
     {Template, Rules} = load_file(),
     Counts = lists:keysort(
                2, maps:to_list(polymerize_count(40, Rules, Template))),
-    element(2, hd(lists:reverse(Counts))) - element(2, hd(Counts)).
+    element(2, lists:last(Counts)) - element(2, hd(Counts)).
 
 init_memo(Rules) ->
     maps:from_list([ {{A,B,0}, #{}} || [A,B] <- maps:keys(Rules) ]).
