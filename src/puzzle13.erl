@@ -2,6 +2,9 @@
 %%
 %% transparent paper folding
 %% https://adventofcode.com/2021/day/13
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/13/advent-of-code-day-13/
 
 -module(puzzle13).
 
