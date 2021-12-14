@@ -2,12 +2,16 @@
 %%
 %% First half: Find most common binary digit in each position. Binary
 %% number composed of most common is "gamma", inverse is "epsilon.
+%%
+%% https://adventofcode.com/2021/day/3
 
 -module(puzzle03).
 
 -export([
          solveA/0,
          solveA/1,
+         count_digits/1,
+         make_gamma/2,
          solveB/0,
          solveB/1
         ]).
@@ -45,13 +49,10 @@ count_digits([], Total, Init) ->
     {Total, Init}.
 
 make_gamma(Total, Counts) ->
-    Threshold = Total / 2,
-    lists:foldl(fun(C, Acc) ->
-                        (Acc bsl 1) + (case C > Threshold of
-                                           true -> 1;
-                                           false -> 0
-                                       end)
-                end, 0, Counts).
+    Threshold = Total div 2,
+    <<Int:(length(Counts))/integer>> =
+        << <<(C div Threshold):1>> || C <- Counts >>,
+    Int.
 
 solveB() ->
     {ok, Data} = file:read_file("puzzles/puzzle03-input.txt"),
@@ -59,20 +60,8 @@ solveB() ->
     solveB([ N || N <- Numbers, N =/= <<>>]).
 
 solveB(Numbers) ->
-    {Zeros, Ones} = lists:partition(fun(<<Bit, _/binary>>) ->
-                                            Bit == $0
-                                    end,
-                                    Numbers),
-    case length(Zeros) > length(Ones) of
-        true ->
-            Oxygen = Zeros,
-            CO2 = Ones;
-        false ->
-            Oxygen = Ones,
-            CO2 = Zeros
-    end,
-    {binary_to_integer(solveB(Oxygen, {most, 1}, 1), 2),
-     binary_to_integer(solveB(CO2, {least, 0}, 1), 2)}.
+    {binary_to_integer(solveB(Numbers, {most, 1}, 0), 2),
+     binary_to_integer(solveB(Numbers, {least, 0}, 0), 2)}.
 
 solveB([], _, _) ->
     [];
