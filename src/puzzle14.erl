@@ -13,10 +13,8 @@
          parse_input/1,
          polymerize/3,
          count_elements/1,
-         polymerizeB/4,
          solveB/0,
-         init_memo/1,
-         polymerizeC/5
+         polymerize_count/3
         ]).
 
 solveA() ->
@@ -60,36 +58,26 @@ count_elements(Polymer) ->
 add_count(Element, Map) ->
     maps:update_with(Element, fun(V) -> V + 1 end, 1, Map).
 
-polymerizeB(Steps, Rules, [A,B|Polymer], Counts) ->
-    polymerizeB(Steps, Rules, [B|Polymer],
-                polymerize_depth(Steps, Rules, [A,B],
-                                 add_count(A, Counts)));
-polymerizeB(_, _, [Last], Counts) ->
-    add_count(Last, Counts).
-
-polymerize_depth(0, _, _, Counts) ->
-    Counts;
-polymerize_depth(Steps, Rules, [A,B], Counts) ->
-    #{[A,B] := I} = Rules,
-    polymerize_depth(Steps-1, Rules, [A,I],
-                     polymerize_depth(Steps-1, Rules, [I,B],
-                                      add_count(I, Counts))).
+solveB() ->
+    {Template, Rules} = load_file(),
+    Counts = lists:keysort(
+               2, maps:to_list(polymerize_count(40, Rules, Template))),
+    element(2, hd(lists:reverse(Counts))) - element(2, hd(Counts)).
 
 init_memo(Rules) ->
     maps:from_list([ {{A,B,0}, #{}} || [A,B] <- maps:keys(Rules) ]).
 
-solveB() ->
-    {Template, Rules} = load_file(),
-    Counts = lists:keysort(2, maps:to_list(polymerizeC(40, Rules, Template, init_memo(Rules), #{}))),
-    element(2, hd(lists:reverse(Counts))) - element(2, hd(Counts)).
+polymerize_count(Steps, Rules, Polymer) ->
+    polymerize_count(Steps, Rules, Polymer, init_memo(Rules), #{}).
 
-polymerizeC(Steps, Rules, [A,B|Polymer], Memo, Count) ->
+polymerize_count(Steps, Rules, [A,B|Polymer], Memo, Count) ->
     NewMemo = polymerize_memo(Steps, Rules, [A,B], Memo),
     #{{A,B,Steps} := AddCount} = NewMemo,
     NewCount = maps:merge_with(fun(_, AC, BC) -> AC + BC end,
                                AddCount, Count),
-    polymerizeC(Steps, Rules, [B|Polymer], NewMemo, add_count(A, NewCount));
-polymerizeC(_, _, [Last], _, Count) ->
+    polymerize_count(Steps, Rules, [B|Polymer], NewMemo,
+                     add_count(A, NewCount));
+polymerize_count(_, _, [Last], _, Count) ->
     add_count(Last, Count).
 
 polymerize_memo(0, _, _, Memo) ->
