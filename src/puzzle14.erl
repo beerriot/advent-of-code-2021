@@ -55,45 +55,25 @@ polymerize_step(Rules, [A,B|Template], Acc) ->
     polymerize_step(Rules, [B|Template], [I,A|Acc]).
 
 count_elements(Polymer) ->
-    lists:foldl(fun(E, Count) ->
-                        case Count of
-                            #{E := C} ->
-                                Count#{E := C+1};
-                            _ ->
-                                Count#{E => 1}
-                        end
-                end,
-                #{},
-                Polymer).
+    lists:foldl(fun add_count/2, #{}, Polymer).
+
+add_count(Element, Map) ->
+    maps:update_with(Element, fun(V) -> V + 1 end, 1, Map).
 
 polymerizeB(Steps, Rules, [A,B|Polymer], Counts) ->
-    NewCounts = case Counts of
-                    #{A := ACount} ->
-                        Counts#{A := ACount + 1};
-                    _ ->
-                        Counts#{A => 1}
-                end,
     polymerizeB(Steps, Rules, [B|Polymer],
-                polymerize_depth(Steps, Rules, [A,B], NewCounts));
+                polymerize_depth(Steps, Rules, [A,B],
+                                 add_count(A, Counts)));
 polymerizeB(_, _, [Last], Counts) ->
-    case Counts of
-        #{Last := LastCount} ->
-            Counts#{Last := LastCount + 1};
-        _->
-            Counts#{Last := 1}
-    end.
+    add_count(Last, Counts).
 
 polymerize_depth(0, _, _, Counts) ->
     Counts;
 polymerize_depth(Steps, Rules, [A,B], Counts) ->
     #{[A,B] := I} = Rules,
-    case polymerize_depth(Steps-1, Rules, [A,I],
-                          polymerize_depth(Steps-1, Rules, [I,B], Counts)) of
-        NewCount=#{I := ICount} ->
-            NewCount#{I := ICount + 1};
-        NewCount ->
-            NewCount#{I => 1}
-    end.
+    polymerize_depth(Steps-1, Rules, [A,I],
+                     polymerize_depth(Steps-1, Rules, [I,B],
+                                      add_count(I, Counts))).
 
 init_memo(Rules) ->
     maps:from_list([ {{A,B,0}, #{}} || [A,B] <- maps:keys(Rules) ]).
@@ -129,7 +109,3 @@ polymerize_memo(Steps, Rules, [A,B], Memo) ->
                                        AICount, IBCount),
             NewMemo#{{A,B,Steps} => add_count(I, NewCount)}
     end.
-
-
-add_count(Element, Map) ->
-    maps:update_with(Element, fun(V) -> V + 1 end, 1, Map).
