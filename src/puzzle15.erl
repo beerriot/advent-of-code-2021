@@ -10,12 +10,18 @@
 
 -export([
          solveA/0,
+         solveB/0,
          parse_input/1,
+         expand_territory/2,
          find_lowest_risk/1
         ]).
 
 solveA() ->
     Territory = load_file(),
+    find_lowest_risk(Territory).
+
+solveB() ->
+    Territory = expand_territory({5,5}, load_file()),
     find_lowest_risk(Territory).
 
 load_file() ->
@@ -32,6 +38,19 @@ width(<<$\n, _/binary>>) ->
     0;
 width(<<_, Rest/binary>>) ->
     1 + width(Rest).
+
+expand_territory({MulWidth, MulHeight}, {{Width, Height}, Risk}) ->
+    ExWidth = << (duplicate_add(MulWidth, Row))
+                 || <<Row:Width/binary>> <= Risk >>,
+    ExHeight = duplicate_add(MulHeight, ExWidth),
+    {{Width * MulWidth, Height * MulHeight}, ExHeight}.
+
+duplicate_add(Multiple, Data) ->
+    << (add_risk(N, Data)) || N <- lists:seq(0, Multiple-1) >>.
+
+add_risk(N, Data) ->
+    << <<case N + R of V when V > 9 -> V - 9; V -> V end>>
+       || <<R>> <= Data >>.
 
 init_cost_to_point({{Width,Height},_}) ->
     [ [ 9*(X+Y) || X <- lists:seq(0, Width-1) ]
