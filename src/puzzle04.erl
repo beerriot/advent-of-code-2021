@@ -9,6 +9,7 @@
          solveA/2,
          solveB/0,
          solveB/2,
+         parse_input/1,
          score_win/2
         ]).
 
@@ -22,6 +23,9 @@ solveB() ->
 
 parse_file(Filename) ->
     {ok, Data} = file:read_file(Filename),
+    parse_input(Data).
+
+parse_input(Data) ->
     [CallString | BoardStrings] = string:split(Data, <<"\n">>, all),
     Call = parse_call(CallString),
     Boards = parse_boards(BoardStrings),
@@ -57,18 +61,16 @@ solveA([Next|Rest], Boards) ->
 
 solveB([Next|Rest], Boards) ->
     NewBoards = call_number(Next, Boards),
-    case lists:filter(fun winning_board/1, NewBoards) of
-        [W] when length(Boards) == 1 ->
+    case lists:partition(fun winning_board/1, NewBoards) of
+        {[W], []} ->
             {Next, W};
-        Winners ->
-            solveB(Rest, NewBoards -- Winners)
+        {_, NonWinners} ->
+            solveB(Rest, NonWinners)
     end.
 
 call_number(N, Boards) ->
-    [ [ [case E of
-             N -> x;
-             _ -> E
-         end || E <- R ]
+    [ [ [case E of N -> x; _ -> E end
+         || E <- R ]
         || R <- B]
       || B <- Boards ].
 
