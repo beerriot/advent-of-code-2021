@@ -1,6 +1,11 @@
 %% Puzzle:
 %%
 %% Bingo
+%%
+%% https://adventofcode.com/2021/day/4
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/15/advent-of-code-day-4/
 
 -module(puzzle04).
 
