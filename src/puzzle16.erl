@@ -2,6 +2,9 @@
 %%
 %% transparent paper folding
 %% https://adventofcode.com/2021/day/16
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/16/advent-of-code-day-16/
 
 -module(puzzle16).
 
@@ -84,33 +87,30 @@ parse_n_packets(N, BinData) ->
                     lists:seq(1, N)),
     {lists:reverse(RevPackets), Rest}.
 
-sum_versions(#packet{ver=V, subs=undefined}) ->
+sum_versions(#packet{ver=V, type=literal}) ->
     V;
 sum_versions(#packet{ver=V, subs=Subs}) ->
     V + lists:sum([sum_versions(S) || S <- Subs]).
 
 calculate(#packet{type=literal, value=V}) ->
     V;
-calculate(#packet{type=0, subs=Subs}) ->
-    lists:sum([calculate(S) || S <- Subs]);
-calculate(#packet{type=1, subs=Subs}) ->
-    lists:foldl(fun(A,B) -> calculate(A)*B end, 1, Subs);
-calculate(#packet{type=2, subs=Subs}) ->
-    lists:min([calculate(S) || S <- Subs]);
-calculate(#packet{type=3, subs=Subs}) ->
-    lists:max([calculate(S) || S <- Subs]);
-calculate(#packet{type=5, subs=[A,B]}) ->
-    case calculate(A) > calculate(B) of
-        true -> 1;
-        false -> 0
-    end;
-calculate(#packet{type=6, subs=[A,B]}) ->
-    case calculate(A) < calculate(B) of
-        true -> 1;
-        false -> 0
-    end;
-calculate(#packet{type=7, subs=[A,B]}) ->
-    case calculate(A) == calculate(B) of
-        true -> 1;
-        false -> 0
+calculate(#packet{type=Operator, subs=Subs}) ->
+    case {Operator, [calculate(S) || S <- Subs]} of
+        {0, Calc} ->
+            lists:sum(Calc);
+        {1, Calc} ->
+            lists:foldl(fun erlang:'*'/2, 1, Calc);
+        {2, Calc} ->
+            lists:min(Calc);
+        {3, Calc} ->
+            lists:max(Calc);
+        {5, [A,B]} ->
+            compare(fun erlang:'>'/2, A, B);
+        {6, [A,B]} ->
+            compare(fun erlang:'<'/2, A, B);
+        {7, [A,B]} ->
+            compare(fun erlang:'=='/2, A, B)
     end.
+
+compare(Fun, A, B) ->
+    case Fun(A,B) of true -> 1; false -> 0 end.
