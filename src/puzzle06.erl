@@ -1,6 +1,10 @@
 %% Puzzle:
 %%
 %% Fish
+%% https://adventofcode.com/2021/day/6
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/16/advent-of-code-day-6/
 
 -module(puzzle06).
 
@@ -21,8 +25,8 @@ solveB() ->
 load_fish() ->
     {ok, Data} = file:read_file("puzzles/puzzle06-input.txt"),
     [OneLine|_] = string:split(Data, <<"\n">>),
-    [ binary_to_integer(F) ||
-        F <- string:split(OneLine, <<",">>, all) ].
+    [ binary_to_integer(F)
+      || F <- string:split(OneLine, <<",">>, all) ].
 
 model_fishA(0, Fish) ->
     Fish;
@@ -48,8 +52,8 @@ model_fishB(Days, [Fish|Rest], Table) ->
         false when Fish >= Days ->
             model_fishB(Days, Rest, [{Fish, 1} | Table]);
         false ->
-            Spawn = [ F + 2 || %% first spawn delay
-                        F <- lists:seq(Fish+7, Days, 7) ],
+            Spawn = [ F + 2 %% first spawn delay
+                      || F <- lists:seq(Fish+7, Days, 7) ],
             NewTable = model_fishB(Days, Spawn, Table),
             Total = lists:sum([ proplists:get_value(S, NewTable) ||
                                   S <- Spawn ]),
