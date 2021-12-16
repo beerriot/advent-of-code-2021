@@ -1,6 +1,10 @@
 %% Puzzle:
 %%
 %% Lines
+%% https://adventofcode.com/2021/day/5
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/16/advent-of-code-day-5/
 
 -module(puzzle05).
 
