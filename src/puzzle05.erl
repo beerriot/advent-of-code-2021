@@ -7,6 +7,7 @@
 -export([
          solveA/0,
          solveB/0,
+         parse_line/1,
          map_lines/1,
          count_overlaps/1
         ]).
