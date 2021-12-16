@@ -7,15 +7,21 @@
 
 -export([
          solveA/0,
+         solveB/0,
          hex_to_bin/1,
          parse_packet/1,
          parse_all_packets/1,
-         sum_versions/1
+         sum_versions/1,
+         calculate/1
         ]).
 
 solveA() ->
     {Packet, _} = parse_packet(load_file()),
     sum_versions(Packet).
+
+solveB() ->
+    {Packet, _} = parse_packet(load_file()),
+    calculate(Packet).
 
 load_file() ->
     {ok, HexData} = file:read_file("puzzles/puzzle16-input.txt"),
@@ -42,13 +48,13 @@ hex_to_bin(HexData) ->
 parse_packet(<<Ver:3, 4:3, Rest/bitstring>>) ->
     {Literal, RestB} = parse_literal(Rest),
     {#packet{ver=Ver, type=literal, value=Literal}, RestB};
-parse_packet(<<Ver:3, _Type:3, 0:1, BitLength:15, Rest/bitstring>>) ->
+parse_packet(<<Ver:3, Type:3, 0:1, BitLength:15, Rest/bitstring>>) ->
     <<SubPacketData:BitLength/bitstring, RestB/bitstring>> = Rest,
     Packets = parse_all_packets(SubPacketData),
-    {#packet{ver=Ver, type=operator, subs=Packets}, RestB};
-parse_packet(<<Ver:3, _Type:3, 1:1, SubCount:11, Rest/bitstring>>) ->
+    {#packet{ver=Ver, type=Type, subs=Packets}, RestB};
+parse_packet(<<Ver:3, Type:3, 1:1, SubCount:11, Rest/bitstring>>) ->
     {Packets, RestB} = parse_n_packets(SubCount, Rest),
-    {#packet{ver=Ver, type=operator, subs=Packets}, RestB};
+    {#packet{ver=Ver, type=Type, subs=Packets}, RestB};
 parse_packet(Rest) ->
     {'end', Rest}.
 
@@ -82,3 +88,29 @@ sum_versions(#packet{ver=V, subs=undefined}) ->
     V;
 sum_versions(#packet{ver=V, subs=Subs}) ->
     V + lists:sum([sum_versions(S) || S <- Subs]).
+
+calculate(#packet{type=literal, value=V}) ->
+    V;
+calculate(#packet{type=0, subs=Subs}) ->
+    lists:sum([calculate(S) || S <- Subs]);
+calculate(#packet{type=1, subs=Subs}) ->
+    lists:foldl(fun(A,B) -> calculate(A)*B end, 1, Subs);
+calculate(#packet{type=2, subs=Subs}) ->
+    lists:min([calculate(S) || S <- Subs]);
+calculate(#packet{type=3, subs=Subs}) ->
+    lists:max([calculate(S) || S <- Subs]);
+calculate(#packet{type=5, subs=[A,B]}) ->
+    case calculate(A) > calculate(B) of
+        true -> 1;
+        false -> 0
+    end;
+calculate(#packet{type=6, subs=[A,B]}) ->
+    case calculate(A) < calculate(B) of
+        true -> 1;
+        false -> 0
+    end;
+calculate(#packet{type=7, subs=[A,B]}) ->
+    case calculate(A) == calculate(B) of
+        true -> 1;
+        false -> 0
+    end.
