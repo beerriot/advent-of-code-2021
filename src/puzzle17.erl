@@ -3,39 +3,60 @@
 %% transparent paper folding
 %% https://adventofcode.com/2021/day/17
 %%
-%% Initial A solution: no code needed
+%% explanation:
+%% https://blog.beerriot.com/2021/12/17/advent-of-code-day-17/
+-module(puzzle17).
+
+-export([
+         solveA/0,
+         solveB/0,
+         parse_input/1,
+         find_ys/2,
+         find_xs/2,
+         find_solutions/4
+        ]).
 
 %%  - highest Y velocity for target below start is abs(lower_end)-1,
 %%    because it will trace same steps up and down, and then makes one
 %%    more step, which needs to hit bottom end
 %%
 %%  - highest Y reached during that point is (Y * (Y+1))/2
+solveA() ->
+    [_MinX, _MaxX, MinY, _MaxY] = load_file(),
+    Velocity = abs(MinY) - 1,
+    (Velocity * (Velocity + 1)) div 2.
 
-%% Solve B: length(lists:usort(puzzle17:find_solutions(MinX, MaxX, MinY, MaxY))).
+solveB() ->
+    [MinX, MaxX, MinY, MaxY] = load_file(),
+    length(puzzle17:find_solutions(MinX, MaxX, MinY, MaxY)).
 
--module(puzzle17).
+load_file() ->
+    {ok, Data} = file:read_file("puzzles/puzzle17-input.txt"),
+    parse_input(Data).
 
--export([
-         solveA/0
-        ]).
-
--compile([export_all]).
-
-solveA() -> see_comment.
+-define(RE,
+        "target area: x=([0-9]+)\\.\\.([0-9]+), y=(-[0-9]+)\\.\\.(-[0-9]+)").
+parse_input(Input) ->
+    {match, Params} =
+        re:run(Input, ?RE, [{capture, [1,2,3,4], binary}]),
+    [binary_to_integer(V) || V <- Params ].
 
 %% Notes for Part 2:
 %%
-%% - Solve X first. That will tell you what steps will be in the
-%%   horizontal target region for that value X.
+%% - Solve X and Y independently: keep a list of which steps for each
+%%   velocity end up in the target space, then pair up the two, by
+%%   matching the steps. Match X to Y, because of the special case
+%%   noted below.
 %%
-%% - Special cases: Probes that reach X=0 velocity within the target
-%%   stay in the target (horizontally) from that point onward.
+%% - Solving X:
+%%    - Skip everything that would have a zero velocity before the target
+%%    - Stop searching when the first step of a velocity is past the target
+%%    - Special case: some velocities might stop in the target, so mark
+%%      that they match every step greater
 %%
-%% - Start with max Y velocity, and work downward, calculating Y
-%%   steps that meet the target, and then cross check with X.
-%%
-%% - Stop with the first Y that has a step below the target earlier
-%%   than any X step in the target.
+%% - Solving Y:
+%%    - Start with highest positive velocity that hits target
+%%    - Work downward until the first velocity has a first step below target
 
 find_ys(Min, Max) ->
     Highest = abs(Min)-1,
