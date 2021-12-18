@@ -40,6 +40,7 @@ Explanations of these solutions are slowly showing up on [my blog](https://blog.
  * [Day 4](https://blog.beerriot.com/2021/12/15/advent-of-code-day-4/)
  * [Day 5](https://blog.beerriot.com/2021/12/16/advent-of-code-day-5/)
  * [Day 6](https://blog.beerriot.com/2021/12/16/advent-of-code-day-6/)
+ * [Day 7](https://blog.beerriot.com/2021/12/17/advent-of-code-day-7/)
  * [Day 12](https://blog.beerriot.com/2021/12/12/advent-of-code-day-12/)
  * [Day 13](https://blog.beerriot.com/2021/12/13/advent-of-code-day-13/)
  * [Day 14](https://blog.beerriot.com/2021/12/14/advent-of-code-day-14/)

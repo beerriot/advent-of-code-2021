@@ -1,6 +1,10 @@
 %% Puzzle:
 %%
 %% Crab alignment
+%% https://adventofcode.com/2021/day/7
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/17/advent-of-code-day-7/
 
 -module(puzzle07).
 
