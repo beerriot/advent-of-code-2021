@@ -1,6 +1,9 @@
 %% Puzzle:
 %%
 %% https://adventofcode.com/2021/day/18
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/17/advent-of-code-day-18/
 
 -module(puzzle18).
 
@@ -50,9 +53,9 @@ reduce(N) ->
             end
     end.
 
-maybe_explode(N, _) when is_integer(N) ->
-    false;
-maybe_explode({A,B}, Depth) when Depth < 4 ->
+maybe_explode({A,B}, Depth) when Depth >= 4, is_integer(A), is_integer(B) ->
+    {true, 0, A, B};
+maybe_explode({A,B}, Depth) ->
     case maybe_explode(A, Depth+1) of
         {true, New, AddA, AddB} ->
             {true, {New, add_explode({b, AddB}, B)}, AddA, 0};
@@ -64,19 +67,8 @@ maybe_explode({A,B}, Depth) when Depth < 4 ->
                     false
             end
     end;
-maybe_explode({A,B}, Depth) ->
-    case is_integer(A) and is_integer(B) of
-        true ->
-            {true, 0, A, B};
-        false ->
-            case maybe_explode(A, Depth+1) of
-                {true, New, AddA, AddB} ->
-                    {true, {New, add_explode({b, AddB}, B)}, AddA, 0};
-                false ->
-                    {true, New, AddA, AddB} = maybe_explode(B, Depth+1),
-                    {true, {add_explode({a, AddA}, A), New}, 0, AddB}
-            end
-    end.
+maybe_explode(N, _) when is_integer(N) ->
+    false.
 
 add_explode({_, Add}, Num) when is_integer(Num) ->
     Add + Num;

@@ -47,3 +47,4 @@ Explanations of these solutions are slowly showing up on [my blog](https://blog.
  * [Day 15](https://blog.beerriot.com/2021/12/15/advent-of-code-day-15/)
  * [Day 16](https://blog.beerriot.com/2021/12/16/advent-of-code-day-16/)
  * [Day 17](https://blog.beerriot.com/2021/12/17/advent-of-code-day-17/)
+ * [Day 18](https://blog.beerriot.com/2021/12/17/advent-of-code-day-18/)
