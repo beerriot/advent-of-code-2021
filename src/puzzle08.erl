@@ -1,6 +1,10 @@
 %% Puzzle:
 %%
 %% Seven-segment displays
+%% https://adventofcode.com/2021/day/8
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/18/advent-of-code-day-8/
 
 -module(puzzle08).
 

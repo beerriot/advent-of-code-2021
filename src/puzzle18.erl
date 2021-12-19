@@ -3,7 +3,7 @@
 %% https://adventofcode.com/2021/day/18
 %%
 %% explanation:
-%% https://blog.beerriot.com/2021/12/17/advent-of-code-day-18/
+%% https://blog.beerriot.com/2021/12/18/advent-of-code-day-18/
 
 -module(puzzle18).
 
