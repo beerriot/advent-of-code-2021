@@ -27,6 +27,9 @@
 solveA() ->
     count_unique_beacons(align_stations(load_file())).
 
+solveB() ->
+    largest_manhattan_distance(align_stations(load_file())).
+
 load_file() ->
     {ok, Data} = file:read_file("puzzles/puzzle19-input.txt"),
     parse_scanners(Data).
@@ -202,5 +205,20 @@ find_alignment(Su, [Sa|Rest]) ->
 find_alignment(_, []) ->
     none.
 
+%% Stations must be aligned
 count_unique_beacons(Stations) ->
     length(ordsets:union([ordsets:from_list(S#s.bs) || S <- Stations])).
+
+%% Stations must be aligned
+manhattan_distance(#s{a=#b{x={_,X1},y={_,Y1},z={_,Z1}}},
+                   #s{a=#b{x={_,X2},y={_,Y2},z={_,Z2}}}) ->
+    abs(X1-X2) + abs(Y1-Y2) + abs(Z1-Z2).
+
+%% Stations must be aligned
+largest_manhattan_distance(Stations) ->
+    lists:foldl(fun(T, Acc) ->
+                        lists:max([Acc|[manhattan_distance(T, S)
+                                        || S <- Stations]])
+                end,
+                0,
+                Stations).
