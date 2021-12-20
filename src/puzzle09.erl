@@ -1,6 +1,10 @@
 %% Puzzle:
 %%
+%% Basins
+%% https://adventofcode.com/2021/day/9
 %%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/20/advent-of-code-day-9/
 
 -module(puzzle09).
 
