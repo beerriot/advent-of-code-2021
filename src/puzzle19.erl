@@ -2,6 +2,9 @@
 %%
 %% Beacons
 %% https://adventofcode.com/2021/day/19
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/19/advent-of-code-day-19/
 
 -module(puzzle19).
 

@@ -49,3 +49,4 @@ Explanations of these solutions are slowly showing up on [my blog](https://blog.
  * [Day 16](https://blog.beerriot.com/2021/12/16/advent-of-code-day-16/)
  * [Day 17](https://blog.beerriot.com/2021/12/17/advent-of-code-day-17/)
  * [Day 18](https://blog.beerriot.com/2021/12/18/advent-of-code-day-18/)
+ * [Day 19](https://blog.beerriot.com/2021/12/19/advent-of-code-day-19/)
