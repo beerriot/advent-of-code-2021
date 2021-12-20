@@ -7,6 +7,7 @@
 
 -export([
          solveA/0,
+         solveB/0,
          load_file/0,
          load_example/0,
          enhance/1,
@@ -19,6 +20,12 @@ solveA() ->
       enhance(
         enhance(
           load_file()))).
+
+solveB() ->
+    count_on_pixels(
+      lists:foldl(fun(_, I) -> enhance(I) end,
+                  load_file(),
+                  lists:seq(1, 50))).
 
 load_file() ->
     {ok, Data} = file:read_file("puzzles/puzzle20-input.txt"),
