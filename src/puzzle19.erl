@@ -6,17 +6,19 @@
 -module(puzzle19).
 
 -export([
+         solveA/0,
+         solveB/0,
          load_file/0,
          parse_scanners/1,
          find_overlap/2,
-         align_stations/1
+         align_scanners/1,
+         count_unique_beacons/1,
+         largest_manhattan_distance/1
         ]).
-
--compile([export_all]).
 
 -record(s,     %% scanner
         {n,    %% number
-         a,    %% alignment (debugging)
+         a,    %% alignment
          bs}). %% beacons
 
 -record(b,     %% beacon
@@ -25,10 +27,10 @@
          z}).
 
 solveA() ->
-    count_unique_beacons(align_stations(load_file())).
+    count_unique_beacons(align_scanners(load_file())).
 
 solveB() ->
-    largest_manhattan_distance(align_stations(load_file())).
+    largest_manhattan_distance(align_scanners(load_file())).
 
 load_file() ->
     {ok, Data} = file:read_file("puzzles/puzzle19-input.txt"),
@@ -112,14 +114,12 @@ find_overlap_xy(_, _, _, []) ->
     [].
 
 find_overlap_xyz(S1, S2, XSO, YSO, [{ZSel, ZOffset}|Rest]) ->
-    ZS2 = move_points(#b{x=XSO, y=YSO, z={ZSel, ZOffset}}, S2#s.bs),
+    ZS2 = move_beacons(#b{x=XSO, y=YSO, z={ZSel, ZOffset}}, S2#s.bs),
     case length(find_matching(S1#s.bs, ZS2)) of
         L when L >= 12 ->
-            io:format("Confirmed overlap of L=~p~n", [L]),
             [#b{x=XSO, y=YSO, z={ZSel, ZOffset}}]
                 ++ find_overlap_xyz(S1, S2, XSO, YSO, Rest);
-        L ->
-            io:format("Rejecting at final stage becase L=~p~n", [L]),
+        _ ->
             find_overlap_xyz(S1, S2, XSO, YSO, Rest)
     end;
 find_overlap_xyz(_, _, _, _, []) ->
@@ -150,12 +150,10 @@ offset_histo(FBS1, BS1, {FBS2, M}, BS2) ->
       #{},
       [ M * element(FBS2, B) || B <- BS2 ]).
 
-%% This is set-intersection, but getting into and out of Map format to
-%% use intersect_with seemed more complicated
 find_matching(BS1, BS2) ->
     ordsets:intersection(ordsets:from_list(BS1), ordsets:from_list(BS2)).
 
-move_points(#b{x={{XSel,XMul},XOff},
+move_beacons(#b{x={{XSel,XMul},XOff},
                y={{YSel,YMul},YOff},
                z={{ZSel,ZMul},ZOff}},
             Beacons) ->
@@ -164,30 +162,28 @@ move_points(#b{x={{XSel,XMul},XOff},
         z=ZMul * element(ZSel, B) + ZOff}
      || B <- Beacons].
 
-align_stations(Stations) ->
-    {value, S0, Rest} = lists:keytake(0, #s.n, Stations),
-    align_stations(Rest,
+align_scanners(Scanners) ->
+    {value, S0, Rest} = lists:keytake(0, #s.n, Scanners),
+    align_scanners(Rest,
                    [S0#s{a=#b{x={{#b.x,1},0},
                               y={{#b.y,1},0},
                               z={{#b.z,1},0}}}],
                    []).
 
-align_stations([S|Rest], Aligned, Retry) ->
+align_scanners([S|Rest], Aligned, Retry) ->
     case find_alignment(S, Aligned) of
         none ->
-            io:format("Warning: moving station ~p to back~n", [S#s.n]),
-            align_stations(Rest, Aligned, [{length(Aligned), S}|Retry]);
+            align_scanners(Rest, Aligned, [{length(Aligned), S}|Retry]);
         A ->
-            Moved = move_points(A, S#s.bs),
-            align_stations(Rest, [S#s{a=A, bs=Moved}|Aligned], Retry)
+            Moved = move_beacons(A, S#s.bs),
+            align_scanners(Rest, [S#s{a=A, bs=Moved}|Aligned], Retry)
     end;
-align_stations([], Aligned, []) ->
+align_scanners([], Aligned, []) ->
     Aligned;
-align_stations([], Aligned, Retry) ->
+align_scanners([], Aligned, Retry) ->
     case lists:any(fun({L,_}) -> L < length(Aligned) end, Retry) of
         true ->
-            io:format("Retrying stations ~p~n", [[S#s.n || {_, S} <- Retry]]),
-            align_stations([S || {_, S} <- Retry], Aligned, []);
+            align_scanners([S || {_, S} <- Retry], Aligned, []);
         false ->
             {Aligned, Retry}
     end.
@@ -198,27 +194,26 @@ find_alignment(Su, [Sa|Rest]) ->
             find_alignment(Su, Rest);
         [A] ->
             %% this will fail to match if puzzle is designed such that
-            %% two stations can line up in multiple ways
-            io:format("Station ~p aligned with ~p~n", [Su#s.n, Sa#s.n]),
+            %% two scanners can line up in multiple ways
             A
     end;
 find_alignment(_, []) ->
     none.
 
-%% Stations must be aligned
-count_unique_beacons(Stations) ->
-    length(ordsets:union([ordsets:from_list(S#s.bs) || S <- Stations])).
+%% Scanners must be aligned
+count_unique_beacons(Scanners) ->
+    length(ordsets:union([ordsets:from_list(S#s.bs) || S <- Scanners])).
 
-%% Stations must be aligned
+%% Scanners must be aligned
 manhattan_distance(#s{a=#b{x={_,X1},y={_,Y1},z={_,Z1}}},
                    #s{a=#b{x={_,X2},y={_,Y2},z={_,Z2}}}) ->
     abs(X1-X2) + abs(Y1-Y2) + abs(Z1-Z2).
 
-%% Stations must be aligned
-largest_manhattan_distance(Stations) ->
+%% Scanners must be aligned
+largest_manhattan_distance(Scanners) ->
     lists:foldl(fun(T, Acc) ->
                         lists:max([Acc|[manhattan_distance(T, S)
-                                        || S <- Stations]])
+                                        || S <- Scanners]])
                 end,
                 0,
-                Stations).
+                Scanners).
