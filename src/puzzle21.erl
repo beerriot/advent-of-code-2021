@@ -196,3 +196,40 @@ dirac_game_collector(Workers, {P1Wins, P2Wins}) ->
               lists:delete(Pid, Workers),
               {P1Wins + P1WorkerWins, P2Wins + P2WorkerWins})
     end.
+
+dirac_game_memoize(P1Start, P2Start) ->
+    Players = [#p{i=1, p=P1Start, s=0}, #p{i=2, p=P2Start, s=0}],
+    {Wins, _} = dirac_game_memoize_i(Players, #{}),
+    Wins.
+
+dirac_game_memoize_i([Up,Next], Memo) ->
+    case Memo of
+        #{[Up,Next] := Wins} -> {Wins, Memo};
+        _ ->
+            {Wins, NewMemo} =
+                lists:foldl(
+                  fun({Roll, RollMult}, {AccWins, AccMemo}) ->
+                          NP = case (Up#p.p + Roll) rem 10
+                               of 0 -> 10; S -> S end,
+                          case Up#p.s + NP of
+                              Win when Win >= 21 ->
+                                  {setelement(Up#p.i, AccWins,
+                                              RollMult
+                                              +element(Up#p.i, AccWins)),
+                                   %% don't bother memoizing leaves -
+                                   %% recomputing them is cheap
+                                   AccMemo};
+                              NS ->
+                                  SubPlayers = [Next,Up#p{p=NP,s=NS}],
+                                  {{P1SubWins,P2SubWins},SubMemo} =
+                                      dirac_game_memoize_i(SubPlayers,
+                                                           AccMemo),
+                                  {{RollMult*P1SubWins+element(1, AccWins),
+                                    RollMult*P2SubWins+element(2, AccWins)},
+                                   SubMemo}
+                          end
+                  end,
+                  {{0,0}, Memo},
+                  ?ALL_ROLL_COUNTS),
+            {Wins, NewMemo#{[Up,Next] => Wins}}
+    end.
