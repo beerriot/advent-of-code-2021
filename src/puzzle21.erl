@@ -171,3 +171,28 @@ dirac_game([Up,Next], LeafMult, Wins) ->
                 end,
                 Wins,
                 ?ALL_ROLL_COUNTS).
+
+dirac_game_parallel(P1Start, P2Start) ->
+    Me = self(),
+    Pids = lists:map(
+             fun(Roll) ->
+                     spawn(puzzle21, dirac_game_worker,
+                           [P1Start, Roll, P2Start, Me])
+             end,
+             ?ALL_ROLL_COUNTS),
+    dirac_game_collector(Pids, {0,0}).
+
+dirac_game_worker(P1Start, {Roll, RollMult}, P2Start, Collector) ->
+    NP = case (P1Start + Roll) rem 10 of 0 -> 10; S -> S end,
+    Result = dirac_game([#p{i=2, p=P2Start, s=0}, #p{i=1, p=NP, s=NP}],
+                        RollMult, {0,0}),
+    Collector ! {self(), Result}.
+
+dirac_game_collector([], Wins) ->
+    Wins;
+dirac_game_collector(Workers, {P1Wins, P2Wins}) ->
+    receive {Pid, {P1WorkerWins, P2WorkerWins}} ->
+            dirac_game_collector(
+              lists:delete(Pid, Workers),
+              {P1Wins + P1WorkerWins, P2Wins + P2WorkerWins})
+    end.
