@@ -2,6 +2,9 @@
 %%
 %% Image
 %% https://adventofcode.com/2021/day/20
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/20/advent-of-code-day-20/
 
 -module(puzzle20).
 
