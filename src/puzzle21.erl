@@ -2,6 +2,9 @@
 %%
 %% parsing
 %% https://adventofcode.com/2021/day/21
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/21/advent-of-code-day-21/
 
 -module(puzzle21).
 

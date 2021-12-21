@@ -53,3 +53,4 @@ Explanations of these solutions are slowly showing up on [my blog](https://blog.
  * [Day 18](https://blog.beerriot.com/2021/12/18/advent-of-code-day-18/)
  * [Day 19](https://blog.beerriot.com/2021/12/19/advent-of-code-day-19/)
  * [Day 20](https://blog.beerriot.com/2021/12/20/advent-of-code-day-20/)
+ * [Day 21](https://blog.beerriot.com/2021/12/21/advent-of-code-day-21/)
