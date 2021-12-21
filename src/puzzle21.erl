@@ -11,6 +11,7 @@
 -compile([export_all]).
 
 -record(p, {    % player
+             i, % index
              p, % position
              s  % score
            }).
@@ -49,3 +50,124 @@ player_roll(#p{p=Start, s=Score}, Die) ->
 
 die_roll(#d{n=N, c=C}) ->
     {N, #d{n=case (N + 1) of 101 -> 1; V -> V end, c=C+1}}.
+
+%% 4 -1 5(5) -1 6(11) -1 7(18) -1 8(26)W
+%%                             -2 9(27)W
+%%                             -3 10(28)W
+%%                    -2 8(19) -1 9(28)W
+%%                             -2 10(29)W
+%%                             -3 1(20) -1 2(22)W
+%%                                      -2 3(23)W
+%%                                      -3 4(24)W
+%%                    -3 9(20) -1 10(30)W
+%%                             -2 1(21)W
+%%                             -3 2(22)W
+%%           -2 7(12) -1 8(20) -1 9(29)W
+%%                             -2 10(30)W
+%%                             -3 1(21)W
+%%                    -2 9(21)W
+%%                    -3 10(22)W
+%%           -3 8(13) -1 9(22)W
+%%                    -2 10(23)W
+%%                    -3 1(14) -1 2(16)
+%%                             -2 3(17)
+%%                             -3 4(18)
+%%   -2 6(6) -1 7(13) -1 8(21)W
+%%                    -2 9(22)W
+%%                    -3 10(23)W
+%%           -2 8(14) -1 9(23)W
+%%                    -2 10(24)W
+%%                    -3 1(15)
+%%           -3 9(15) -1 10(25)W
+%%                    -2 1(16)
+%%                    -3 2(17)
+%%   -3 7(7) -1 8(15) -1 9(24)W
+%%                    -2 10(25)W
+%%                    -3 1(16)
+%%           -2 9(16) -1 10(26)W
+%%                    -2 1(17)
+%%           -3 10(17)-1 1(18)
+%%                    -2 2(19)
+%%                    -3 3(20)
+
+%% 111 = 3 2xx 4 3xx 5
+%% 112 = 4     5     6
+%% 113 = 5     6     7
+%% 121 = 4     5     6
+%% 122 = 5     6     7
+%% 123 = 6     7     8
+%% 131 = 5     6     7
+%% 132 = 6     7     8
+%% 133 = 7     8     9
+
+%% There are 27 ways the dice could roll, but sum is fewer:
+%% 1 x 3
+%% 3 x 4
+%% 6 x 5
+%% 7 x 6
+%% 6 x 7
+%% 3 x 8
+%% 1 x 9
+
+%%              roll value V  V ways that roll can show up
+-define(ALL_ROLL_COUNTS, [{3, 1},
+                          {4, 3},
+                          {5, 6},
+                          {6, 7},
+                          {7, 6},
+                          {8, 3},
+                          {9, 1}]).
+
+dirac_player_win_histo(Start) ->
+    dirac_player_win_histo(Start, 0, 0, 1, ?ALL_ROLL_COUNTS, #{}).
+
+dirac_player_win_histo(_Space, _Score, _, _, [], Histo) ->
+    Histo;
+dirac_player_win_histo(Space, Score, RollCount, LeafMult,
+                       [{Roll, RollMult}|Rest], Histo) ->
+    NewSpace = case (Space + Roll) rem 10 of 0 -> 10; S -> S end,
+    case Score + NewSpace of
+        Win when Win > 21 ->
+            dirac_player_win_histo(
+              Space, Score, RollCount, LeafMult, Rest,
+              maps:update_with(RollCount+1,
+                               fun(C) -> C+(RollMult*LeafMult) end,
+                               RollMult*LeafMult,
+                               Histo));
+        NewScore ->
+            NewHisto = dirac_player_win_histo(NewSpace, NewScore, RollCount+1,
+                                              LeafMult*RollMult,
+                                              ?ALL_ROLL_COUNTS, Histo),
+            dirac_player_win_histo(Space, Score, RollCount, LeafMult, Rest,
+                                   NewHisto)
+    end.
+
+player_wins(P1Histo, P2Histo) ->
+    maps:fold(fun(P1Rolls, P1GameCount, Acc) ->
+                      P2Wins = lists:sum([maps:get(K, P2Histo)
+                                          || K <- maps:keys(P2Histo),
+                                             K < P1Rolls]),
+                      Acc + P1GameCount - P2Wins
+              end,
+              0,
+              P1Histo).
+
+dirac_game(P1Start, P2Start) ->
+    dirac_game([#p{i=1, p=P1Start, s=0}, #p{i=2, p=P2Start, s=0}], 1, {0, 0}).
+
+dirac_game([Up,Next], LeafMult, Wins) ->
+    lists:foldl(fun({Roll, RollMult}, AccWins) ->
+                        NP = case (Up#p.p + Roll) rem 10 of 0 -> 10; S -> S end,
+                        case Up#p.s + NP of
+                            Win when Win >= 21 ->
+                                setelement(Up#p.i, AccWins,
+                                           LeafMult*RollMult
+                                           +element(Up#p.i, AccWins));
+                            NS ->
+                                dirac_game([Next,Up#p{p=NP,s=NS}],
+                                           LeafMult*RollMult,
+                                           AccWins)
+                        end
+                end,
+                Wins,
+                ?ALL_ROLL_COUNTS).
