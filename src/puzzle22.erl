@@ -31,24 +31,13 @@ parse_range(Str) ->
 
 limit_instructions(Inst, XRng, YRng, ZRng) ->
     lists:filter(fun({_Dir, XInst, YInst, ZInst}) ->
-                         case {limit_range(XInst, XRng),
-                               limit_range(YInst, YRng),
-                               limit_range(ZInst, ZRng)} of
-                             {{_,_},{_,_},{_,_}} ->
-                                 true;
-                             _ ->
-                                 false
-                         end
+                         lists:all(fun({I, R}) -> in_range(I, R) end,
+                                   [{XInst,XRng},{YInst,YRng},{ZInst,ZRng}])
                  end,
                  Inst).
 
-limit_range({XMin, XMax}, {RMin, RMax}) ->
-    case (XMin >= RMin) and (XMax =< RMax) of
-        true ->
-            {XMin, XMax};
-        false ->
-            false
-    end.
+in_range({XMin, XMax}, {RMin, RMax}) ->
+    (XMin >= RMin) and (XMax =< RMax).
 
 apply_instructions(Inst) ->
     apply_instructions(Inst, #{}).
