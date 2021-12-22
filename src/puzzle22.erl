@@ -39,42 +39,52 @@ limit_instructions(Inst, XRng, YRng, ZRng) ->
 in_range({XMin, XMax}, {RMin, RMax}) ->
     (XMin >= RMin) and (XMax =< RMax).
 
-apply_instructions(Inst) ->
-    apply_instructions(Inst, #{}).
+pointmap_apply(Inst) ->
+    pointmap_apply(Inst, #{}).
 
-apply_instructions([{Dir, {XMin,XMax}, {YMin,YMax}, {ZMin,ZMax}}|Rest],
+pointmap_apply([{Dir, {XMin,XMax}, {YMin,YMax}, {ZMin,ZMax}}|Rest],
                    Cubes) ->
     NewCubes = lists:foldl(
                  case Dir of
                      on ->
-                         fun turn_on/2;
+                         fun pointmap_on/2;
                      off ->
-                         fun turn_off/2
+                         fun pointmap_off/2
                  end,
                  Cubes,
                  [{X,Y,Z}
                   || X <- lists:seq(XMin, XMax),
                      Y <- lists:seq(YMin, YMax),
                      Z <- lists:seq(ZMin, ZMax)]),
-    apply_instructions(Rest, NewCubes);
-apply_instructions([], Cubes) ->
+    pointmap_apply(Rest, NewCubes);
+pointmap_apply([], Cubes) ->
     Cubes.
 
-turn_on(Point, Cubes) ->
+pointmap_on(Point, Cubes) ->
     Cubes#{Point => on}.
 
-turn_off(Point, Cubes) ->
+pointmap_off(Point, Cubes) ->
     maps:remove(Point, Cubes).
 
-count_cubes_on(Cubes) ->
+pointmap_count(Cubes) ->
     maps:size(Cubes).
 
-apply_inst2([{on, X, Y, Z}|Rest], Cubes) ->
-    apply_inst2(Rest, [{X, Y, Z}|Cubes]);
-apply_inst2([{off, X, Y, Z}|Rest], Cubes) ->
-    apply_inst2(Rest, subtract({X, Y, Z}, Cubes));
-apply_inst2([], Cubes) ->
+region_apply([{on, X, Y, Z}|Rest], Cubes) ->
+    region_apply(Rest, [{X, Y, Z}|Cubes]);
+region_apply([{off, X, Y, Z}|Rest], Cubes) ->
+    region_apply(Rest, subtract({X, Y, Z}, Cubes));
+region_apply([], Cubes) ->
     unique(Cubes).
+
+region_count(Cubes) ->
+    lists:foldl(fun({X, Y, Z}, Acc) ->
+                        axis_size(X) * axis_size(Y) * axis_size(Z) + Acc
+                end,
+                0,
+                Cubes).
+
+axis_size({Min, Max}) ->
+    (Max - Min) + 1.
 
 unique([C|Rest]) ->
     [C|unique(subtract(C, Rest))];
@@ -129,13 +139,3 @@ max_compare(P1, P2) when P1 >= P2 ->
     [P2];
 max_compare(P1, P2) ->
     [P1, P1+1, P2].
-
-count_cubes_on2(Cubes) ->
-    lists:foldl(fun({X, Y, Z}, Acc) ->
-                        axis_size(X) * axis_size(Y) * axis_size(Z) + Acc
-                end,
-                0,
-                Cubes).
-
-axis_size({Min, Max}) ->
-    (Max - Min) + 1.
