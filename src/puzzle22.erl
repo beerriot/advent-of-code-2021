@@ -29,45 +29,18 @@ parse_range(Str) ->
     [Start, End] = string:split(Str, <<"..">>),
     {binary_to_integer(Start), binary_to_integer(End)}.
 
-apply_instructions(Inst) ->
-    apply_instructions(Inst, {-50, 50}, {-50, 50}, {-50, 50}).
-
-apply_instructions(Inst, XRng, YRng, ZRng) ->
-    apply_instructions(Inst, XRng, YRng, ZRng, #{}).
-
-apply_instructions([{Dir, XInst, YInst, ZInst}|Rest],
-                   XRng, YRng, ZRng, Cubes) ->
-    case limit_range(XInst, XRng) of
-        {XMin, XMax} ->
-            case limit_range(YInst, YRng) of
-                {YMin, YMax} ->
-                    case limit_range(ZInst, ZRng) of
-                        {ZMin, ZMax} ->
-                            NewCubes = lists:foldl(
-                                         case Dir of
-                                             on ->
-                                                 fun turn_on/2;
-                                             off ->
-                                                 fun turn_off/2
-                                         end,
-                                         Cubes,
-                                         [{X,Y,Z}
-                                          || X <- lists:seq(XMin, XMax),
-                                             Y <- lists:seq(YMin, YMax),
-                                             Z <- lists:seq(ZMin, ZMax)]),
-                            apply_instructions(Rest, XRng, YRng, ZRng,
-                                               NewCubes);
-                        false ->
-                            apply_instructions(Rest, XRng, YRng, ZRng, Cubes)
-                    end;
-                false ->
-                    apply_instructions(Rest, XRng, YRng, ZRng, Cubes)
-            end;
-        false ->
-            apply_instructions(Rest, XRng, YRng, ZRng, Cubes)
-    end;
-apply_instructions([], _, _, _, Cubes) ->
-    Cubes.
+limit_instructions(Inst, XRng, YRng, ZRng) ->
+    lists:filter(fun({_Dir, XInst, YInst, ZInst}) ->
+                         case {limit_range(XInst, XRng),
+                               limit_range(YInst, YRng),
+                               limit_range(ZInst, ZRng)} of
+                             {{_,_},{_,_},{_,_}} ->
+                                 true;
+                             _ ->
+                                 false
+                         end
+                 end,
+                 Inst).
 
 limit_range({XMin, XMax}, {RMin, RMax}) ->
     case (XMin >= RMin) and (XMax =< RMax) of
@@ -76,6 +49,27 @@ limit_range({XMin, XMax}, {RMin, RMax}) ->
         false ->
             false
     end.
+
+apply_instructions(Inst) ->
+    apply_instructions(Inst, #{}).
+
+apply_instructions([{Dir, {XMin,XMax}, {YMin,YMax}, {ZMin,ZMax}}|Rest],
+                   Cubes) ->
+    NewCubes = lists:foldl(
+                 case Dir of
+                     on ->
+                         fun turn_on/2;
+                     off ->
+                         fun turn_off/2
+                 end,
+                 Cubes,
+                 [{X,Y,Z}
+                  || X <- lists:seq(XMin, XMax),
+                     Y <- lists:seq(YMin, YMax),
+                     Z <- lists:seq(ZMin, ZMax)]),
+    apply_instructions(Rest, NewCubes);
+apply_instructions([], Cubes) ->
+    Cubes.
 
 turn_on(Point, Cubes) ->
     Cubes#{Point => on}.
