@@ -6,101 +6,153 @@
 
 -export([
          solveA/0,
-         solveB/0
+         solveB/0,
+         load_octopi/0,
+         count_flashes_for_round/2,
+         count_rounds_to_all_flash/2,
+         octopus/2
         ]).
 
--compile([export_all]).
-
 solveA() ->
-    count_flashes(100, load_octopi()).
+    count_flashes_for_round(100, load_octopi()).
 
 solveB() ->
-    case count_flashes(1000, load_octopi()) of
-        {0, Count} ->
-            {not_yet, Count};
-        {N, _} ->
-            {all_flash, 1000-N}
-    end.
+    count_rounds_to_all_flash(1000, load_octopi()).
 
 load_octopi() ->
     {ok, Data} = file:read_file("puzzles/puzzle11-input.txt"),
     [ [ C - $0 || C <- binary_to_list(Row) ]
       || Row <- string:split(Data, <<"\n">>, all), Row =/= <<>> ].
 
-count_flashes(Iterations, Octopi) ->
-    count_flashes(Iterations, Octopi, 0,
-                  lists:sum([ length(Row) || Row <- Octopi ])).
+count_flashes_for_round(Rounds, Octopi) ->
+    Pids = start_octopi(Octopi),
+    _ = send_neighbors(Pids),
+    observer_steps(Rounds, lists:flatten(Pids)).
 
-count_flashes(0, _, Count, _) ->
-    {0, Count};
-count_flashes(Iterations, Octopi, Count, StopCount) ->
-    case flash_round(increment_all(Octopi), 0) of
-        {StopCount, _} ->
-            {Iterations-1, StopCount};
-        {Flashes, NewOctopi} ->
-            count_flashes(Iterations-1, NewOctopi, Count+Flashes, StopCount)
+count_rounds_to_all_flash(MaxRounds, Octopi) ->
+    Pids = start_octopi(Octopi),
+    _ = send_neighbors(Pids),
+    observer_all_flash(MaxRounds, lists:flatten(Pids), 0).
+
+start_octopi(Octopi) ->
+    Pids = [ [new_octopus(E) || E <- Row] || Row <- Octopi ],
+    wait_for_ready(lists:flatten(Pids)),
+    Pids.
+
+wait_for_ready([]) ->
+    ok;
+wait_for_ready(Pids) ->
+    receive {ready, P} -> wait_for_ready(lists:delete(P, Pids)) end.
+
+new_octopus(Energy) ->
+    spawn(puzzle11, octopus, [self(), Energy]).
+
+send_neighbors(Pids) ->
+    [ pid_at(C, R, Pids) ! {neighbors, [pid_at(X, Y, Pids)
+                                        || X <- [C-1, C, C+1],
+                                           Y <- [R-1, R, R+1],
+                                           X > 0,
+                                           X =< length(hd(Pids)),
+                                           Y > 0,
+                                           Y =< length(Pids),
+                                           {X,Y} /= {C,R}]}
+      || R <- lists:seq(1, length(Pids)),
+         C <- lists:seq(1, length(hd(Pids))) ].
+
+pid_at(X, Y, Pids) ->
+    lists:nth(X, lists:nth(Y, Pids)).
+
+octopus(Observer, Energy) ->
+    Observer ! {ready, self()},
+    receive {neighbors, Neighbors} ->
+            octopus(Observer, Neighbors, 0, Energy, false)
     end.
 
-increment_all(Octopi) ->
-    [ [O+1 || O <- Row] || Row <- Octopi ].
-
-clear_flashes(Octopi) ->
-    [ [ case O of f -> 0; _ -> O end || O <- Row ] || Row <- Octopi ].
-
-apply_mask([FirstOctopi|Octopi], [FirstMask,SecondMask|Mask], undef) ->
-    [ [ case A of f -> f; _ -> A + B + C end
-        || {A, B, C} <- lists:zip3(FirstOctopi, FirstMask, SecondMask) ]
-    | apply_mask(Octopi, [SecondMask|Mask], FirstMask) ];
-apply_mask([LastOctopi], [LastMask], PrevMask) ->
-    [ [ case A of f -> f; _ -> A + B + C end
-        || {A, B, C} <- lists:zip3(LastOctopi, LastMask, PrevMask) ] ];
-apply_mask([Row|Octopi], [RowMask,NextMask|Mask], PrevMask) ->
-    ZipMask = [ A + B + C
-                || {A, B, C} <- lists:zip3(RowMask, NextMask, PrevMask) ],
-    [ [ case A of f -> f; _ -> A + B end
-        || {A, B} <- lists:zip(Row, ZipMask) ]
-      | apply_mask(Octopi, [NextMask|Mask], RowMask) ].
-
-flash_round(Octopi, Count) ->
-    case flash_mask(Octopi) of
-        {0, _, _} ->
-            {Count, clear_flashes(Octopi)};
-        {Flashes, Mask, NewOctopi} ->
-            flash_round(apply_mask(NewOctopi, Mask, undef), Count+Flashes)
+octopus(Observer, Neighbors, Step, Energy, Flashed) ->
+    receive
+        {Step, advance} ->
+            case Energy + 1 of
+                10 ->
+                    _ = [ N ! {Step+1, {flash, self()}} || N <- Neighbors ],
+                    octopus(Observer, Neighbors, Step+1, 0,
+                            {self, length(Neighbors), 1});
+                NewEnergy ->
+                    Observer ! {Step+1, {done, 0}},
+                    octopus(Observer, Neighbors, Step+1, NewEnergy, false)
+            end;
+        {Step, {flash, Neighbor}} ->
+            case Flashed of
+                {_, _, _} ->
+                    Neighbor ! {Step, {reflect, 0}},
+                    octopus(Observer, Neighbors, Step, Energy, Flashed);
+                false ->
+                    case Energy + 1 of
+                        10 ->
+                            _ = [ N ! {Step, {flash, self()}}
+                                  || N <- Neighbors ],
+                            octopus(Observer, Neighbors, Step, 0,
+                                    {{reflect,Neighbor},
+                                     length(Neighbors),
+                                     1});
+                        NewEnergy ->
+                            Neighbor ! {Step, {reflect, 0}},
+                            octopus(Observer, Neighbors, Step, NewEnergy,
+                                    false)
+                    end
+            end;
+        {Step, {reflect, Reflects}} ->
+            case Flashed of
+                {self, 1, Flashes} ->
+                    Observer ! {Step, {done, Flashes+Reflects}},
+                    octopus(Observer, Neighbors, Step, Energy,
+                            {self, 0, Flashes+Reflects});
+                {{reflect, Neighbor}, 1, Flashes} ->
+                    Neighbor ! {Step, {reflect, Flashes+Reflects}},
+                    octopus(Observer, Neighbors, Step, Energy,
+                            {{reflect, Neighbor}, 0, Flashes+Reflects});
+                {Who, Remaining, Flashes} ->
+                    octopus(Observer, Neighbors, Step, Energy,
+                            {Who, Remaining - 1, Flashes + Reflects})
+            end;
+        stop ->
+            ok
     end.
 
-flash_mask(Octopi) ->
-    {Counts, Mask, NewOctopi} =
-        lists:unzip3([flash_mask_row(Row) || Row <- Octopi]),
-    {lists:sum(Counts), Mask, NewOctopi}.
+observer_steps(Steps, Pids) ->
+    Flashes = lists:foldl(
+                fun(Step, Flashes) ->
+                        NewStep = observer_advance(Pids, Step),
+                        observer_wait(Pids, NewStep, Flashes, length(Pids))
+                end,
+                0,
+                lists:seq(0, Steps-1)),
+    _ = [P ! stop || P <- Pids],
+    Flashes.
 
-flash_mask_row(Row) ->
-    flash_mask_row(Row, [], 0, []).
+observer_all_flash(MaxSteps, Pids, MaxSteps) ->
+    _ = [P ! stop || P <- Pids],
+    not_observed;
+observer_all_flash(MaxSteps, Pids, Step) ->
+    NewStep = observer_advance(Pids, Step),
+    case observer_wait(Pids, NewStep, 0, length(Pids)) of
+        Flashes when Flashes == length(Pids) ->
+            _ = [P ! stop || P <- Pids],
+            NewStep;
+        _ ->
+            observer_all_flash(MaxSteps - 1, Pids, NewStep)
+    end.
 
-flash_mask_row([First|Octopi], [], 0, []) ->
-    case First of
-        f ->
-            flash_mask_row(Octopi, [0,0], 0, [f]);
-        N when N =< 9 ->
-            flash_mask_row(Octopi, [0,0], 0, [N]);
-        _ ->
-            flash_mask_row(Octopi, [1,1], 1, [f])
-    end;
-flash_mask_row([Last], [This,Prev|Mask], Count, Rev) ->
-    case Last of
-        f ->
-            {Count, lists:reverse([This,Prev|Mask]), lists:reverse([f|Rev])};
-        N when N =< 9 ->
-            {Count, lists:reverse([This,Prev|Mask]), lists:reverse([N|Rev])};
-        _ ->
-            {Count+1, lists:reverse([This+1,Prev+1|Mask]), lists:reverse([f|Rev])}
-    end;
-flash_mask_row([O|Octopi], [This,Prev|Mask], Count, Rev) ->
-    case O of
-        f ->
-            flash_mask_row(Octopi, [0,This,Prev|Mask], Count, [f|Rev]);
-        N when N =< 9 ->
-            flash_mask_row(Octopi, [0,This,Prev|Mask], Count, [N|Rev]);
-        _ ->
-            flash_mask_row(Octopi, [1,This+1,Prev+1|Mask], Count+1, [f|Rev])
+observer_advance(Pids, Step) ->
+    _ = [ P ! {Step, advance} || P <- Pids ],
+    Step + 1.
+
+observer_wait(Pids, Step, Flashes, Advance) ->
+    receive
+        {Step, {done, NewFlashes}} ->
+            case Advance - 1 of
+                0 ->
+                    Flashes + NewFlashes;
+                NewAdvance ->
+                    observer_wait(Pids, Step, Flashes+NewFlashes, NewAdvance)
+            end
     end.
