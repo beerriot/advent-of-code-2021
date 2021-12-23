@@ -1,6 +1,10 @@
 %% Puzzle:
 %%
+%% Octopi
+%% https://adventofcode.com/2021/day/11
 %%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/23/advent-of-code-day-11/
 
 -module(puzzle11).
 
