@@ -1,7 +1,10 @@
 %% Puzzle:
 %%
-%% Octopi
+%% Amphipods
 %% https://adventofcode.com/2021/day/23
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/25/advent-of-code-day-23/
 
 -module(puzzle23).
 
