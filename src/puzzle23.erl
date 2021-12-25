@@ -11,8 +11,6 @@
 -compile([export_all]).
 
 %% use these, as they are the distance from the hallway
--define(ROOM_TOP, 1).
--define(ROOM_BOTTOM, 2).
 -define(NONROOM_HALLWAYS, [0,1,3,5,7,9,10]).
 
 distance({hallway, H1}, {hallway, H2}) ->
@@ -51,62 +49,95 @@ cost_per_space(#pod{t=b}) -> 10;
 cost_per_space(#pod{t=c}) -> 100;
 cost_per_space(#pod{t=d}) -> 1000.
 
-distance_to_target(#pod{t=Type, l=Loc}, Pods) ->
+distance_to_target(#pod{t=Type, l=Loc}, Pods, RoomSize) ->
     case Loc of
-        {room, Type, ?ROOM_BOTTOM} ->
+        {room, Type, RoomSize} ->
             %% were in the bottom of the right room - no move needed
             0;
-        {room, Type, ?ROOM_TOP} ->
-            case lists:keyfind({room, Type, ?ROOM_BOTTOM}, #pod.l, Pods) of
-                #pod{t=Type} ->
+        {room, Type, RoomSpot} ->
+            case lower_pods_in_correct_room(Type, RoomSpot, RoomSize, Pods) of
+                true ->
                     %% under us is the correct type in the right room
                     %% - no move needed
                     0;
-                #pod{} ->
+                false ->
                     %% some other type is below us, so we'll have to
                     %% move out and back in at least one step
-                    4
+                    RoomSpot + 3
             end;
         _ ->
             %% distance to be in the room at all is the question
-            distance(Loc, {room, Type, ?ROOM_TOP})
+            distance(Loc, {room, Type, 1})
     end.
 
 finished(Pods) ->
     lists:all(fun(#pod{t=T, l={room, T, _}}) -> true; (_) -> false end,
               Pods).
 
-estimated_cost_left(Pods) ->
-    lists:sum([ cost_per_space(P) * distance_to_target(P, Pods) || P <- Pods ]).
+estimated_cost_left(Pods, RoomSize) ->
+    lists:sum([ cost_per_space(P) * distance_to_target(P, Pods, RoomSize)
+                || P <- Pods ]).
 
-legal_moves(#pod{t=Type, l={room, Type, ?ROOM_BOTTOM}}, _Others, _Opts) ->
+legal_moves(#pod{t=Type, l={room, Type, RoomSize}},
+            _Others, RoomSize, _Opts) ->
     %% yes it can move, but no we shouldn't bother wasting time
     %% considering it
     [];
-legal_moves(#pod{t=Type, l={room, Type, ?ROOM_TOP}}=P, Others, Opts) ->
-    case lists:keyfind({room, Type, ?ROOM_BOTTOM}, #pod.l, Others) of
-        #pod{t=Type} ->
+legal_moves(#pod{t=Type, l={room, Type, RoomSpot}}=P,
+            Others, RoomSize, Opts) ->
+    case lower_pods_in_correct_room(Type, RoomSpot, RoomSize, Others) of
+        true ->
             %% as with already being in the bottom position, there is
             %% nowhere else we should consider this amphipod going
-            [];
-        #pod{t=_OtherType} ->
-            %% go somewhere else
-            legal_hallway_moves(P, Others, Opts)
-    end;
-legal_moves(#pod{l={room, Type, ?ROOM_BOTTOM}}=P, Others, Opts) ->
-    case lists:keyfind({room, Type, ?ROOM_TOP}, #pod.l, Others) of
-        #pod{} ->
-            %% we're stuck here until the amphipod on the top moves
+            %% (because it's in the right room, with only right-room
+            %% amphipods below it)
             [];
         false ->
-            %% go somewhere else - not ROOM_TOP, though - that's a
-            %% wasted extra step to consider
-            legal_hallway_moves(P, Others, Opts)
+            case can_reach_hallway(Type, RoomSpot, Others) of
+                true ->
+                    %% go somewhere else
+                    legal_hallway_moves(P, Others, RoomSize, Opts);
+                false ->
+                    %% stuck
+                    []
+            end
     end;
-legal_moves(Pod, Others, Opts) ->
-    legal_hallway_moves(Pod, Others, Opts).
+legal_moves(#pod{l={room, Type, RoomSpot}}=P, Others, RoomSize, Opts) ->
+    case can_reach_hallway(Type, RoomSpot, Others) of
+        true ->
+            %% go somewhere else
+            legal_hallway_moves(P, Others, RoomSize, Opts);
+        false ->
+            %% we're stuck here until the amphipod on the top moves
+            []
+    end;
+legal_moves(Pod, Others, RoomSize, Opts) ->
+    %% we're already in the hallway
+    legal_hallway_moves(Pod, Others, RoomSize, Opts).
 
-legal_hallway_moves(#pod{t=Type, l={hallway, H}}, Others, _Opts) ->
+lower_pods_in_correct_room(Type, MinSpot, RoomSize, Pods) ->
+    lists:all(fun(Spot) ->
+                      case lists:keyfind({room, Type, Spot},
+                                         #pod.l, Pods) of
+                          #pod{t=OT} ->
+                              OT == Type;
+                          false ->
+                              %% allows search from 0 for hallway search
+                              true
+                      end
+              end,
+              lists:seq(MinSpot+1, RoomSize)).
+
+can_reach_hallway(_Type, 1, _Pods) -> true;
+can_reach_hallway(Type, Spot, Pods) ->
+    case lists:keyfind({room, Type, Spot-1}, #pod.l, Pods) of
+        #pod{} ->
+            false;
+        false ->
+            true
+    end.
+
+legal_hallway_moves(#pod{t=Type, l={hallway, H}}, Others, RoomSize, _Opts) ->
     Target = hallway_outside_room(Type),
     case lists:any(fun(#pod{l={hallway, H2}}) ->
                            (min(H,Target) < H2) and (H2 < max(H,Target));
@@ -118,30 +149,27 @@ legal_hallway_moves(#pod{t=Type, l={hallway, H}}, Others, _Opts) ->
             %% our way is blocked
             [];
         false ->
-            case lists:keyfind({room, Type, ?ROOM_TOP}, #pod.l, Others) of
-                #pod{} ->
-                    %% someone in the top spot, can't get in
-                    [];
+            case lower_pods_in_correct_room(Type, 0, RoomSize, Others) of
                 false ->
-                    case lists:keyfind({room, Type, ?ROOM_BOTTOM},
-                                       #pod.l, Others) of
-                        #pod{t=Type} ->
-                            %% other amphipod of this type is in
-                            %% bottom spot
-                            [{room, Type, ?ROOM_TOP}];
-                        #pod{} ->
-                            %% amphipod of another type is in bottom spon
-                            [];
-                        false ->
-                            %% room is clear
-                            [{room, Type, ?ROOM_BOTTOM}]
+                    %% non-Type amphipods in this room
+                    [];
+                true ->
+                    case [ Spot || #pod{l={room, T, Spot}} <- Others,
+                                   T == Type] of
+                        [] ->
+                            %% no one here - move into bottom
+                            [{room, Type, RoomSize}];
+                        Used ->
+                            %% move in above others
+                            [{room, Type, lists:min(Used)-1}]
                     end
             end
     end;
-legal_hallway_moves(#pod{l={room, Type, _}}=P, Others, room_only) ->
+legal_hallway_moves(#pod{l={room, Type, _}}=P, Others, RoomSize, room_only) ->
     Outside = hallway_outside_room(Type),
-    legal_hallway_moves(P#pod{l={hallway, Outside}}, Others, room_only);
-legal_hallway_moves(#pod{l={room, Type, _}}=P, Others, Opts) ->
+    legal_hallway_moves(P#pod{l={hallway, Outside}},
+                        Others, RoomSize, room_only);
+legal_hallway_moves(#pod{l={room, Type, _}}=P, Others, RoomSize, Opts) ->
     %% we came through legal_moves, which verified we're not in the
     %% bottom of a room, with another amphipod in the top
     %%
@@ -165,24 +193,26 @@ legal_hallway_moves(#pod{l={room, Type, _}}=P, Others, Opts) ->
     [ {hallway, H} || H <- ReachableHallway ]
       %% add options for moving straight through the hallway into the
       %% right room
-      ++ legal_hallway_moves(P#pod{l={hallway, Outside}}, Others, Opts).
+      ++ legal_hallway_moves(P#pod{l={hallway, Outside}},
+                             Others, RoomSize, Opts).
 
 solve(InitPodRooms) ->
-    InitPods = init_pods(InitPodRooms),
-    InitEst = estimated_cost_left(InitPods),
-    solve([{0, InitEst, InitPods}], #{InitPods => 0}, 0).
+    {RoomSize, InitPods} = init_pods(InitPodRooms),
+    InitEst = estimated_cost_left(InitPods, RoomSize),
+    solve([{0, InitEst, InitPods}], #{InitPods => 0}, RoomSize, 0).
 
-init_pods({[A1,A2], [B1,B2], [C1,C2], [D1,D2]}) ->
-    [#pod{t=A1, l={room, a, ?ROOM_TOP}},
-     #pod{t=A2, l={room, a, ?ROOM_BOTTOM}},
-     #pod{t=B1, l={room, b, ?ROOM_TOP}},
-     #pod{t=B2, l={room, b, ?ROOM_BOTTOM}},
-     #pod{t=C1, l={room, c, ?ROOM_TOP}},
-     #pod{t=C2, l={room, c, ?ROOM_BOTTOM}},
-     #pod{t=D1, l={room, d, ?ROOM_TOP}},
-     #pod{t=D2, l={room, d, ?ROOM_BOTTOM}}].
+solve_expanded({[A1,A2],[B1,B2],[C1,C2],[D1,D2]}) ->
+    solve({[A1,d,d,A2],[B1,c,b,B2],[C1,b,a,C2],[D1,a,c,D2]}).
 
-solve([{BestCost, Est, Best}|Options], Seen, Debug) ->
+init_pods({A, B, C, D}) ->
+    {hd([_]=lists:usort([length(R) || R <- [A,B,C,D]])),
+     make_room(a, A)++make_room(b, B)++make_room(c, C)++make_room(d, D)}.
+
+make_room(Room, Types) ->
+    [#pod{t=T, l={room, Room, I}}
+     || {T, I} <- lists:zip(Types, lists:seq(1, length(Types))) ].
+
+solve([{BestCost, Est, Best}|Options], Seen, RoomSize, Debug) ->
     case Debug rem 1000 of
         0 ->
             io:format("length(Options) = ~p "
@@ -198,29 +228,31 @@ solve([{BestCost, Est, Best}|Options], Seen, Debug) ->
         #{Best := LowerCost} when LowerCost < BestCost ->
             %% we found a cheaper path to this state since this option
             %% was put in the list
-            solve(Options, Seen, Debug+1);
+            solve(Options, Seen, RoomSize, Debug+1);
         _ ->
-            {RoomCost, RoomOnly} = make_room_only_moves(BestCost, Best),
+            {RoomCost, RoomOnly} =
+                make_room_only_moves(BestCost, Best, RoomSize),
             %% cost comparison s efficiency only: we know Best wasn't finished
             case (RoomCost =/= BestCost) andalso finished(RoomOnly) of
                 true ->
                     {RoomCost, RoomOnly};
                 false ->
-                    NewOptions = all_legal_moves(RoomCost, RoomOnly),
+                    NewOptions = all_legal_moves(RoomCost, RoomOnly, RoomSize),
                     {CheapOrNew, NewSeen} =
                         update_and_filter_seen(NewOptions, Seen),
                     solve(lists:merge(fun sort_total_path_cost/2,
                                       lists:sort(fun sort_total_path_cost/2,
                                                  CheapOrNew),
                                       Options),
-                          NewSeen, Debug+1)
+                          NewSeen, RoomSize, Debug+1)
             end
     end.
 
-make_room_only_moves(StartCost, Start) ->
+make_room_only_moves(StartCost, Start, RoomSize) ->
     case lists:foldl(fun(P, {AccCost, AccState}) ->
                              Without = lists:delete(P, AccState),
-                             case legal_moves(P, Without, room_only) of
+                             case legal_moves(P, Without, RoomSize,
+                                              room_only) of
                                  [Move] ->
                                      AddCost = cost_per_space(P)
                                          * distance(P#pod.l, Move),
@@ -235,14 +267,14 @@ make_room_only_moves(StartCost, Start) ->
         {StartCost, _} ->
             {StartCost, Start};
         {NewCost, NewStart} ->
-            make_room_only_moves(NewCost, NewStart)
+            make_room_only_moves(NewCost, NewStart, RoomSize)
     end.
 
-all_legal_moves(Cost, State) ->
+all_legal_moves(Cost, State, RoomSize) ->
     lists:append(
       [ begin
             Without = lists:delete(P, State),
-            Moves = legal_moves(P, Without, all),
+            Moves = legal_moves(P, Without, RoomSize, all),
             case lists:keyfind(room, 1, Moves) of
                 false ->
                     RealMoves = Moves;
@@ -253,7 +285,7 @@ all_legal_moves(Cost, State) ->
             [ begin
                   AddCost = cost_per_space(P) * distance(P#pod.l, Move),
                   NewState = [P#pod{l=Move}|Without],
-                  Est = estimated_cost_left(NewState),
+                  Est = estimated_cost_left(NewState, RoomSize),
                   {AddCost+Cost, Est, NewState}
               end
               || Move <- RealMoves ]
