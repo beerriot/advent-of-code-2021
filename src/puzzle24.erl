@@ -67,12 +67,87 @@ exec([{Op, Reg, Arg}|Rest], State, Input) ->
 exec([], State, _Input) ->
     State.
 
-apply_op(add, A, B) -> A + B;
-apply_op(mul, A, B) -> A * B;
-apply_op(dib, A, B) -> A div B;
-apply_op(mod, A, B) -> A rem B;
-apply_op(eql, A, B) ->
+apply_op(Op, A, B) when is_integer(A), is_integer(B) ->
+    case Op of
+        add -> A + B;
+        mul -> A * B;
+        dib -> A div B;
+        mod -> A rem B;
+        eql ->
+            case A == B of
+                true -> 1;
+                false -> 0
+            end
+    end;
+%%% symbolic op implementations
+apply_op(add, A, B) ->
+    case {A, B} of
+        {_, 0} -> A;
+        {0, _} -> B;
+        {_, _} when is_integer(A), is_integer(B) ->
+            A + B;
+        {_, _} ->
+            {add, A, B}
+    end;
+apply_op(mul, A, B) ->
+    case {A, B} of
+        {_, 0} -> 0;
+        {0, _} -> 0;
+        {_, 1} -> A;
+        {1, _} -> B;
+        {_, _} when is_integer(A), is_integer(B) ->
+            A * B;
+        {_, _} ->
+            {mul, A, B}
+    end;
+apply_op(dib, A, B) ->
+    case {A, B} of
+        {_, 1} -> A;
+        {_, _} when is_integer(A), is_integer(B) ->
+            A div B;
+        {A, B} ->
+            {dib, A, B}
+    end;
+apply_op(mod, A, B) ->
+    case {A, B} of
+        {_, 1} -> 0;
+        {_, _} when is_integer(A), is_integer(B) ->
+            A rem B;
+        {A, B} ->
+            {mod, A, B}
+    end;
+apply_op(eql, A, B) when is_integer(A), is_integer(B) ->
     case A == B of
         true -> 1;
         false -> 0
+    end;
+apply_op(eql, A, B) ->
+    case A == B of
+        true -> 1;
+        false ->
+            {eql, A, B}
     end.
+
+expr_depth({_Op, A, B}) ->
+    1 + max(expr_depth(A), expr_depth(B));
+expr_depth(_) ->
+    1.
+
+depends_on(Val, {_Op, A, B}) ->
+    (A == Val) orelse (B == Val)
+        orelse depends_on(Val, A) orelse depends_on(Val, B);
+depends_on(_Val, _) ->
+    false.
+
+print({Op, A, B}) ->
+    ["(", print(A), op_char(Op), print(B), ")"];
+print(V) when is_atom(V) ->
+    atom_to_list(V);
+print(V) ->
+    integer_to_list(V).
+
+op_char(add) -> " + ";
+op_char(mul) -> " * ";
+op_char(dib) -> " / ";
+op_char(mod) -> " % ";
+op_char(eql) -> " ? ".
