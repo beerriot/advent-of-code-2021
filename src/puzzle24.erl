@@ -55,6 +55,13 @@ get_val(Reg, State) when is_atom(Reg) ->
 get_val(Val, _State) ->
     Val.
 
+step(Instructions, Inputs) ->
+    step({Instructions, #reg{}, Inputs}).
+
+step({[I|Rest], State, Inputs}) ->
+    {NewState, NewInputs} = exec([I], State, Inputs),
+    {Rest, NewState, NewInputs}.
+
 exec(Instructions, Inputs) ->
     exec(Instructions, #reg{}, Inputs).
 
@@ -64,8 +71,8 @@ exec([{Op, Reg, Arg}|Rest], State, Input) ->
     Val1 = get_reg(Reg, State),
     Val2 = get_val(Arg, State),
     exec(Rest, set_reg(Reg, State, apply_op(Op, Val1, Val2)), Input);
-exec([], State, _Input) ->
-    State.
+exec([], State, Input) ->
+    {State, Input}.
 
 apply_op(Op, A, B) when is_integer(A), is_integer(B) ->
     case Op of
@@ -125,8 +132,23 @@ apply_op(eql, A, B) ->
     case A == B of
         true -> 1;
         false ->
-            {eql, A, B}
+            AllA = value_range(A),
+            AllB = value_range(B),
+            case {lists:all(fun erlang:is_integer/1, AllA),
+                  lists:all(fun erlang:is_integer/1, AllB),
+                  ordsets:intersection(AllA, AllB)} of
+                {true, true, []} ->
+                    %% can never be equal
+                    0;
+                _ ->
+                    {eql, A, B}
+            end
     end.
+
+value_range(A) when is_list(A) ->
+    ordsets:from_list(lists:flatten([value_range(X) || X <- A]));
+value_range(A) ->
+    [A].
 
 expr_depth({_Op, A, B}) ->
     1 + max(expr_depth(A), expr_depth(B));
