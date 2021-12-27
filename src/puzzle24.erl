@@ -93,6 +93,22 @@ apply_op(add, A, B) ->
         {0, _} -> B;
         {_, _} when is_integer(A), is_integer(B) ->
             A + B;
+        {_, _} when is_integer(B)->
+            case value_range(A) of
+                List=[H|_] when is_integer(H) ->
+                    [X+B || X <- List];
+                _ ->
+                    {add, A, B}
+            end;
+        {_,_} when is_integer(A) ->
+            case value_range(B) of
+                List=[H|_] when is_integer(H) ->
+                    [X+A || X <- List];
+                _ ->
+                    {add, A, B}
+            end;
+        {_, _} when is_list(A), is_list(B) ->
+            [X+Y || X <- A, Y <- B];
         {_, _} ->
             {add, A, B}
     end;
@@ -104,6 +120,20 @@ apply_op(mul, A, B) ->
         {1, _} -> B;
         {_, _} when is_integer(A), is_integer(B) ->
             A * B;
+        {_, _} when is_integer(B)->
+            case value_range(A) of
+                List=[H|_] when is_integer(H) ->
+                    [X*B || X <- List];
+                _ ->
+                    {mul, A, B}
+            end;
+        {_,_} when is_integer(A) ->
+            case value_range(B) of
+                List=[H|_] when is_integer(H) ->
+                    [X*A || X <- List];
+                _ ->
+                    {mul, A, B}
+            end;
         {_, _} ->
             {mul, A, B}
     end;
@@ -112,6 +142,20 @@ apply_op(dib, A, B) ->
         {_, 1} -> A;
         {_, _} when is_integer(A), is_integer(B) ->
             A div B;
+        {_, _} when is_integer(B)->
+            case value_range(A) of
+                List=[H|_] when is_integer(H) ->
+                    [X div B || X <- List];
+                _ ->
+                    {dib, A, B}
+            end;
+        {_,_} when is_integer(A) ->
+            case value_range(B) of
+                List=[H|_] when is_integer(H) ->
+                    [X div A || X <- List];
+                _ ->
+                    {dib, A, B}
+            end;
         {A, B} ->
             {dib, A, B}
     end;
@@ -120,6 +164,20 @@ apply_op(mod, A, B) ->
         {_, 1} -> 0;
         {_, _} when is_integer(A), is_integer(B) ->
             A rem B;
+        {_, _} when is_integer(B)->
+            case value_range(A) of
+                List=[H|_] when is_integer(H) ->
+                    [X rem B || X <- List];
+                _ ->
+                    {mod, A, B}
+            end;
+        {_, _} when is_integer(A) ->
+            case value_range(B) of
+                List=[H|_] when is_integer(H) ->
+                    [a rem X || X <- List];
+                _ ->
+                    {mod, A, B}
+            end;
         {A, B} ->
             {mod, A, B}
     end;
