@@ -231,3 +231,47 @@ op_char(mul) -> " * ";
 op_char(dib) -> " / ";
 op_char(mod) -> " % ";
 op_char(eql) -> " ? ".
+
+split_instructions([{inp, w}|Rest]) ->
+    {Inst, RestB} = lists:splitwith(fun(I) -> I =/= {inp, w} end, Rest),
+    [[{inp, w}|Inst]|split_instructions(RestB)];
+split_instructions([]) ->
+    [].
+
+map_instruction_domain([{inp, w}, {mul, x, 0}, {add, x, z}, {mod, x, 26},
+                        {dib, z, Z}, %% indicator
+                        {add, x, X}, %% value 1
+                        {eql, x, w}, {eql, x, 0}, {mul, y, 0}, {add, y, 25},
+                        {mul, y, x}, {add, y, 1}, {mul, z, y}, {mul, y, 0},
+                        {add, y, w},
+                        {add, y, _Y}, %% value 2
+                        {mul, y, x},
+                        {add, z, y}]=I,
+                       DesiredZ) ->
+    case Z of
+        26 ->
+            ZeroMin = -X + 1,
+            Zeros = lists:duplicate(9, 0),
+            {ZeroReg, _} = exec([{inp, z}|I],
+                                [lists:seq(ZeroMin, ZeroMin+8),
+                                 lists:seq(1,9)]),
+            Zeros = ZeroReg#reg.z,
+            DesiredMin = ZeroMin + DesiredZ * 26,
+            Desireds = lists:duplicate(9, DesiredZ),
+            {DesiredReg,_} = exec([{inp, z}|I],
+                                  [lists:seq(DesiredMin, DesiredMin+8),
+                                   lists:seq(1, 9)]),
+            Desireds = DesiredReg#reg.z,
+            {DesiredMin, DesiredMin+8};
+        1 ->
+            {ZeroReg, _} = exec(I, [lists:seq(1,9)]),
+            [ZeroMin|_] = ZeroReg#reg.z,
+            Steps = (DesiredZ - ZeroMin) div 26,
+            {DesiredReg, _} = exec([{inp, z}|I], [Steps, lists:seq(1,9)]),
+            case lists:member(DesiredZ, DesiredReg#reg.z) of
+                true ->
+                    {true, {Steps, DesiredReg#reg.z}};
+                false ->
+                    {false, {Steps, DesiredReg#reg.z}}
+            end
+    end.
