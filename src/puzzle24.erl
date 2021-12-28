@@ -2,6 +2,9 @@
 %%
 %% ALU
 %% https://adventofcode.com/2021/day/24
+%%
+%% explanation:
+%% https://blog.beerriot.com/2021/12/28/advent-of-code-day-24/
 
 -module(puzzle24).
 
