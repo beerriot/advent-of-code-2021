@@ -275,3 +275,75 @@ map_instruction_domain([{inp, w}, {mul, x, 0}, {add, x, z}, {mod, x, 26},
                     {false, {Steps, DesiredReg#reg.z}}
             end
     end.
+
+function_shape([{inp, w}, {mul, x, 0}, {add, x, z}, {mod, x, 26},
+                {dib, z, Z}, %% indicator
+                {add, x, X}, %% value 1
+                {eql, x, w}, {eql, x, 0}, {mul, y, 0}, {add, y, 25},
+                {mul, y, x}, {add, y, 1}, {mul, z, y}, {mul, y, 0},
+                {add, y, w},
+                {add, y, Y}, %% value 2
+                {mul, y, x},
+                {add, z, y}]=I) ->
+    function_shape(I, Z, X, Y).
+
+function_shape(_I, 26, X, _Y) ->
+    ZeroMin = -X + 1,
+    %% if input Z is ZeroMin, input W==1 will give output Z=0
+    %% if input Z is ZeroMin+1, input W==2 will give output Z=0
+    %% if input Z is ZeroMin+2, input W==3 will give output Z=0
+    %% if input Z is N*26+ZeroMin, input W==1 will give output Z=N
+    {add_out, lists:seq(ZeroMin, ZeroMin+8)};
+function_shape(I, 1, _X, _Y) ->
+    {ZeroReg, _} = exec(I, [lists:seq(1,9)]),
+    %% if input Z is 0, input W==1 will give output 1
+    %% if input Z is 0, input W==2 will give output 2
+    %% if input Z is N, input W==1 will give (output 1)+N*26
+    {mult_out, ZeroReg#reg.z}.
+
+input_domains_for({add_out, ZeroOuts}, ValidOuts) ->
+    lists:flatten([[ZO+VO*26 || ZO <- ZeroOuts] || VO <- ValidOuts]);
+input_domains_for({mult_out, ZeroOuts}, ValidOuts) ->
+    Base = hd(ZeroOuts),
+    lists:usort(
+      lists:filtermap(
+        fun(VO) ->
+                case (VO - Base) rem 26 of
+                    N when N >= 0, N < 9 ->
+                        {true, (VO - Base) div 26};
+                    _ ->
+                        false
+                end
+        end,
+        ValidOuts)).
+
+highest_digit_for({add_out, ZeroOuts}, ZInput, _ZOuts) ->
+    ((ZInput - hd(ZeroOuts)) rem 26) + 1;
+highest_digit_for({mult_out, ZeroOuts}, ZInput, ZOuts) ->
+    Base = ZInput * 26 + hd(ZeroOuts),
+    lists:foldl(fun(W, undefined) ->
+                        case lists:member(Base+W-1, ZOuts) of
+                            true ->
+                                W;
+                            false ->
+                                undefined
+                        end;
+                   (_, Found) ->
+                        Found
+                end,
+                undefined,
+                lists:reverse(lists:seq(1,9))).
+
+highest_valid_value([Inst|Rest], ZOuts) ->
+    io:format("Inst~p: length(ZOuts)=~p~n",
+              [1+length(Rest), length(ZOuts)]),
+    Shape = function_shape(Inst),
+    Domains = input_domains_for(Shape, ZOuts),
+    {ZInput, RevDigits} = highest_valid_value(Rest, Domains),
+    Digit = highest_digit_for(Shape, ZInput, ZOuts),
+    {Reg,_} = exec([{inp, z}|Inst], [ZInput, Digit]),
+    io:format("Inst~p: ZInput=~p Digit=~p Zout=~p~n",
+              [1+length(Rest), ZInput, Digit, Reg#reg.z]),
+    {Reg#reg.z,[Digit|RevDigits]};
+highest_valid_value([], _) ->
+    {0, []}.
