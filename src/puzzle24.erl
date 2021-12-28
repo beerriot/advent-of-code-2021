@@ -334,6 +334,23 @@ highest_digit_for({mult_out, ZeroOuts}, ZInput, ZOuts) ->
                 undefined,
                 lists:reverse(lists:seq(1,9))).
 
+lowest_digit_for({add_out, ZeroOuts}, ZInput, _ZOuts) ->
+    ((ZInput - hd(ZeroOuts)) rem 26) + 1;
+lowest_digit_for({mult_out, ZeroOuts}, ZInput, ZOuts) ->
+    Base = ZInput * 26 + hd(ZeroOuts),
+    lists:foldl(fun(W, undefined) ->
+                        case lists:member(Base+W-1, ZOuts) of
+                            true ->
+                                W;
+                            false ->
+                                undefined
+                        end;
+                   (_, Found) ->
+                        Found
+                end,
+                undefined,
+                lists:seq(1,9)).
+
 highest_valid_value([Inst|Rest], ZOuts) ->
     io:format("Inst~p: length(ZOuts)=~p~n",
               [1+length(Rest), length(ZOuts)]),
@@ -346,4 +363,18 @@ highest_valid_value([Inst|Rest], ZOuts) ->
               [1+length(Rest), ZInput, Digit, Reg#reg.z]),
     {Reg#reg.z,[Digit|RevDigits]};
 highest_valid_value([], _) ->
+    {0, []}.
+
+lowest_valid_value([Inst|Rest], ZOuts) ->
+    io:format("Inst~p: length(ZOuts)=~p~n",
+              [1+length(Rest), length(ZOuts)]),
+    Shape = function_shape(Inst),
+    Domains = input_domains_for(Shape, ZOuts),
+    {ZInput, RevDigits} = lowest_valid_value(Rest, Domains),
+    Digit = lowest_digit_for(Shape, ZInput, ZOuts),
+    {Reg,_} = exec([{inp, z}|Inst], [ZInput, Digit]),
+    io:format("Inst~p: ZInput=~p Digit=~p Zout=~p~n",
+              [1+length(Rest), ZInput, Digit, Reg#reg.z]),
+    {Reg#reg.z,[Digit|RevDigits]};
+lowest_valid_value([], _) ->
     {0, []}.
