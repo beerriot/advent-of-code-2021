@@ -378,3 +378,16 @@ lowest_valid_value([Inst|Rest], ZOuts) ->
     {Reg#reg.z,[Digit|RevDigits]};
 lowest_valid_value([], _) ->
     {0, []}.
+
+solveA() ->
+    solve(fun highest_valid_value/2).
+
+solveB() ->
+    solve(fun lowest_valid_value/2).
+
+solve(SeekFun) ->
+    Instructions = load_file(),
+    {0, RevList} =
+        SeekFun(lists:reverse(split_instructions(Instructions)), [0]),
+    {#reg{z=0},[]} = exec(Instructions, lists:reverse(RevList)),
+    list_to_integer([ $0 + D || D <- lists:reverse(RevList)]).
